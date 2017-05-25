@@ -1,0 +1,20 @@
+/run/verbose 1
+#/event/verbose 1
+#/tracking/verbose 1
+
+/g4simple/seedWithUUID
+
+/g4simple/setReferencePhysList QGSP_BERT_HP
+/physics_engine/tailor/MuonNuclear on
+
+/g4simple/setFileName g4simple.root
+
+/run/initialize
+
+/gps/particle mu+
+/gps/energy 170 GeV
+/gps/direction 0 0 1
+/gps/position 0 0 -5 m
+
+/run/beamOn 10000
+

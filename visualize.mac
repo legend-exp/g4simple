@@ -1,0 +1,26 @@
+/g4simple/setReferencePhysList QGSP_BERT
+/run/initialize
+
+# Invoke the OpenGL visualization driver in its stored mode
+/vis/open OGLSXm
+#/vis/open RayTracerX
+
+# Camera setting
+/vis/viewer/set/style surface
+/vis/viewer/set/viewpointThetaPhi 45 45
+/vis/viewer/set/background white 0.
+#/vis/viewer/set/lightsThetaPhi 30 30
+/vis/viewer/set/lightsVector 0 0 1
+/vis/viewer/zoom 1.2
+/vis/viewer/pan 0.5 0.3
+
+# Camera setting
+#/vis/drawVolume target
+/vis/drawVolume 
+/vis/viewer/flush
+
+# set print mode to vectored
+#/vis/ogl/set/printMode vectored
+#/vis/ogl/set/printSize 2000 2000
+#/vis/ogl/printEPS
+
