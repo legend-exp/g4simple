@@ -1,9 +1,11 @@
 /g4simple/setReferencePhysList QGSP_BERT
+/g4simple/setDetectorGDML assembly.gdml
+
 /run/initialize
 
 # Invoke the OpenGL visualization driver in its stored mode
-/vis/open OGLSXm
-#/vis/open RayTracerX
+#/vis/open OGLSXm
+/vis/open RayTracerX
 
 # Camera setting
 /vis/viewer/set/style surface

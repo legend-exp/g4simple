@@ -1,38 +1,27 @@
 #include <iostream>
 #include <vector>
+
 #include "G4RunManager.hh"
+#include "G4Run.hh"
 #include "G4VUserDetectorConstruction.hh"
-#include "G4PVPlacement.hh"
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "G4GeneralParticleSource.hh"
 #include "G4UIterminal.hh"
 #include "G4UItcsh.hh"
 #include "G4UImanager.hh"
-#include "G4Material.hh"
-#include "G4NistManager.hh"
-#include "G4Box.hh"
-#include "G4Tubs.hh"
 #include "G4PhysListFactory.hh"
-#include "G4Transform3D.hh"
-#include "G4AssemblyVolume.hh"
 #include "G4VisExecutive.hh"
 #include "G4UserSteppingAction.hh"
 #include "G4Track.hh"
 #include "G4EventManager.hh"
-#include "G4TrackingManager.hh"
-#include "G4RunManager.hh"
-#include "G4Run.hh"
-#include "G4Neutron.hh"
-#include "G4VisAttributes.hh"
-#include "G4Color.hh"
 #include "G4UIdirectory.hh"
-#include "G4UIcmdWithADoubleAndUnit.hh"
 #include "G4UIcmdWithAString.hh"
-#include "G4UIcmdWithoutParameter.hh"
+#include "G4UIcmdWithABool.hh"
+#include "G4GDMLParser.hh"
+
 #include "TTree.h"
 #include "TFile.h"
-#include "TString.h"
-#include "TUUID.h"
+
 
 using namespace std;
 using namespace CLHEP;
@@ -47,26 +36,26 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     TTree* fTree;
  
     G4int fNEvents;
-    G4double fDetectorE; // sum of all edeps for this event
 
-    // target exiters
-    vector<G4int> fTEPIDs; // target exiter particle IDs
-    vector<G4double> fTEEnergies;
-    vector<G4double> fTEMomentumCosTheta;
-
-    // detector enterers
-    vector<G4int> fDEPIDs; // detector interactors particle IDs
-    vector<G4double> fDEEnergies;
+    vector<G4int> fPID; 
+    vector<G4int> fTrackID;
+    vector<G4int> fParentID;
+    vector<G4double> fStepNumber;
+    vector<G4double> fKE;
+    vector<G4double> fEDep;
+    vector<G4double> fX;
+    vector<G4double> fY;
+    vector<G4double> fZ;
 
   public:
     G4SimpleSteppingAction() : fFile(NULL), fTree(NULL), fNEvents(0) { 
       ResetVars(); 
-      fFileNameCmd = new G4UIcmdWithAString("/g4simple/setFileName", this);
+      fFileNameCmd = new G4UIcmdWithAString("/g4simple/setOutputFileName", this);
       fFileNameCmd->SetGuidance("Set file name");
     }
     ~G4SimpleSteppingAction() { 
       if(fFile) { 
-        if(fDetectorE>0 || fTEPIDs.size()>0 || fDEPIDs.size()>0) fTree->Fill();
+        if(fPID.size()>0) fTree->Fill();
         fTree->Write(); 
         fFile->Close(); 
       } 
@@ -78,120 +67,57 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     }
 
     void ResetVars() {
-      fDetectorE = 0;
-      fTEPIDs.clear();
-      fTEEnergies.clear();
-      fTEMomentumCosTheta.clear();
-      fDEPIDs.clear();
-      fDEEnergies.clear();
+      fPID.clear();
+      fTrackID.clear();
+      fParentID.clear();
+      fStepNumber.clear();
+      fKE.clear();
+      fEDep.clear();
+      fX.clear();
+      fY.clear();
+      fZ.clear();
     }
 
     void UserSteppingAction(const G4Step *step) {
       if(fFile == NULL) {
-        fNEvents = G4RunManager::GetRunManager()->GetCurrentRun()->GetNumberOfEventToBeProcessed();
-	if(fFileName == "") {
-          G4int muE_GeV_AsInt = (G4int) rint(step->GetPreStepPoint()->GetKineticEnergy()/GeV);
-          fFile = TFile::Open(TString::Format("nuproblm_%dGeV.root", muE_GeV_AsInt), "recreate");
-	}
+	if(fFileName == "") fFile = TFile::Open("g4simpleout.root", "recreate");
 	else fFile = TFile::Open(fFileName.c_str(), "recreate");
         fTree = new TTree("tree", "tree");
+        fTree->Branch("pid", &fPID);
+        fTree->Branch("trackID", &fTrackID);
+        fTree->Branch("parentID", &fParentID);
+        fTree->Branch("step", &fStepNumber);
+        fTree->Branch("KE", &fKE);
+        fTree->Branch("Edep", &fEDep);
+        fTree->Branch("x", &fX);
+        fTree->Branch("y", &fY);
+        fTree->Branch("z", &fZ);
         fTree->Branch("nEvents", &fNEvents, "N/I");
-        fTree->Branch("detectorE_MeV", &fDetectorE, "E/D");
-        fTree->Branch("tePID", &fTEPIDs);
-        fTree->Branch("teE", &fTEEnergies);
-        fTree->Branch("tePCosQ", &fTEMomentumCosTheta);
-        fTree->Branch("dePID", &fDEPIDs);
-        fTree->Branch("deE", &fDEEnergies);
         ResetVars();
+        fNEvents = G4RunManager::GetRunManager()->GetCurrentRun()->GetNumberOfEventToBeProcessed();
       }
       else {
         G4int eventID = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
         static G4int lastEventID = eventID;
         if(eventID != lastEventID) {
-          if(fDetectorE>0 || fTEPIDs.size()>0 || fDEPIDs.size()>0) fTree->Fill();
+          if(fPID.size()>0) fTree->Fill();
           ResetVars();
           lastEventID = eventID;
         }
       }
 
-      G4double energyDep = step->GetTotalEnergyDeposit();
-      fDetectorE += energyDep/MeV;
-
-      G4VPhysicalVolume* preStepVol = step->GetPreStepPoint()->GetPhysicalVolume();
-      G4VPhysicalVolume* postStepVol = step->GetPostStepPoint()->GetPhysicalVolume();
-      if(preStepVol != postStepVol) {
-        static G4VPhysicalVolume* world = NULL;
-        static G4VPhysicalVolume* target = NULL;
-        static G4VPhysicalVolume* detector = NULL;
-        if(preStepVol != world && preStepVol != target && preStepVol != detector) {
-          if(world == NULL && preStepVol->GetName() == "world") world = preStepVol;
-          else if(target == NULL && preStepVol->GetName() == "target") target = preStepVol;
-          else if(detector == NULL && preStepVol->GetName() == "detector") detector = preStepVol;
-        }
-        if(postStepVol != world && postStepVol != target && postStepVol != detector) {
-          if(world == NULL && postStepVol->GetName() == "world") world = postStepVol;
-          else if(target == NULL && postStepVol->GetName() == "target") target = postStepVol;
-          else if(detector == NULL && postStepVol->GetName() == "detector") detector = postStepVol;
-        }
-
-        // target exiters
-        if(preStepVol == target && postStepVol == world) {
-          fTEPIDs.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
-          fTEEnergies.push_back(step->GetTrack()->GetKineticEnergy()/MeV);
-          fTEMomentumCosTheta.push_back(step->GetTrack()->GetMomentumDirection().cosTheta());
-        }
-        // detector enterers
-        else if(preStepVol == world && postStepVol == detector) {
-          fDEPIDs.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
-          fDEEnergies.push_back(step->GetTrack()->GetKineticEnergy()/MeV);
-        }
-      }
+      fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
+      fTrackID.push_back(step->GetTrack()->GetTrackID());
+      fParentID.push_back(step->GetTrack()->GetParentID());
+      fStepNumber.push_back(step->GetTrack()->GetCurrentStepNumber());
+      fKE.push_back(step->GetTrack()->GetKineticEnergy());
+      fEDep.push_back(step->GetTotalEnergyDeposit());
+      fX.push_back(step->GetPostStepPoint()->GetPosition().x());
+      fY.push_back(step->GetPostStepPoint()->GetPosition().y());
+      fZ.push_back(step->GetPostStepPoint()->GetPosition().z());
     }
 
 };
-
-
-
-class G4SimpleDetectorConstruction : public G4VUserDetectorConstruction, public G4UImessenger
-{
-  public:
-    G4VPhysicalVolume* Construct() {
-      G4Material* vacuum = G4NistManager::Instance()->FindOrBuildMaterial("G4_Galactic", false);
-      G4Material* targetMat = G4NistManager::Instance()->FindOrBuildMaterial("G4_Pb", false);
-      G4Material* detectorMat = G4NistManager::Instance()->FindOrBuildMaterial("G4_POLYETHYLENE", false);
-      /*
-      http://www.eljentechnology.com/index.php/joomla-overview/this-is-newest/73-ej-309
-      http://www.eljentechnology.com/images/stories/Data_Sheets/Liquid_Scintillators/EJ309%20data%20sheet.pdf
-      ATOMIC COMPOSITION
-      No. of H Atoms per cm3 5.43 x 10 22
-      No. of C Atoms per cm 3 4.35 x 10 22
-      H:C. Ratio 1.25
-      No. of Electrons per cm 3 3.16 x 10 23
-      */
-
-      G4VisAttributes* copperVisAtt = new G4VisAttributes(G4Colour(173./256., 111./256., 105./256.));
-      G4VisAttributes* glassVisAtt = new G4VisAttributes(G4Colour(0.5, 0.5, 0.5, 0.3));
-
-      G4Box* worldBox = new G4Box("worldBox", 10.0*m, 10.0*m, 10.0*m);
-      G4LogicalVolume* worldL = new G4LogicalVolume(worldBox, vacuum, "worldL", 0, 0, 0);
-      worldL->SetVisAttributes(G4VisAttributes::Invisible);
-
-      G4double inch = 2.54*cm;
-      G4Box* targetS = new G4Box("targetS", 2.*inch, 2.*inch, 4.*inch);
-      G4LogicalVolume* targetL = new G4LogicalVolume(targetS, targetMat, "targetL", 0 ,0, 0);
-      targetL->SetVisAttributes(copperVisAtt);
-      new G4PVPlacement(G4Transform3D::Identity, targetL, "target", worldL, false, 0);
-
-      G4Tubs* detectorS = new G4Tubs("detectorS", 0, 2.5*inch, 2.5*inch, 0, 2.0*pi);
-      G4LogicalVolume* detectorL = new G4LogicalVolume(detectorS, detectorMat, "detectorL", 0 ,0, 0);
-      detectorL->SetVisAttributes(glassVisAtt);
-      G4Transform3D detectorPosRot = G4RotateY3D(90.*degree)*G4TranslateZ3D(1.5*m);
-      new G4PVPlacement(detectorPosRot, detectorL, "detector", worldL, false, 0);
-
-      return new G4PVPlacement(G4Transform3D::Identity, worldL, "world", 0, false, 0);
-    }
-};
-
 
 
 class G4SimplePrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
@@ -203,18 +129,26 @@ class G4SimplePrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 };
 
 
+class G4SimpleDetectorConstruction : public G4VUserDetectorConstruction
+{ 
+  public:
+    G4SimpleDetectorConstruction(G4VPhysicalVolume *world = 0) { fWorld = world; }
+    virtual G4VPhysicalVolume* Construct() { return fWorld; }
+  private:
+    G4VPhysicalVolume *fWorld;
+};
+
 
 class G4SimpleRunManager : public G4RunManager, public G4UImessenger
 {
   private:
     G4UIdirectory* fDirectory;
     G4UIcmdWithAString* fPhysListCmd;
-    G4UIcmdWithoutParameter* fSeedWithUUIDCmd;
+    G4UIcmdWithAString* fDetectorCmd;
+    G4UIcmdWithABool* fRandomSeedCmd;
 
   public:
     G4SimpleRunManager() {
-      SetUserInitialization(new G4SimpleDetectorConstruction);
-
       fDirectory = new G4UIdirectory("/g4simple/");
       fDirectory->SetGuidance("Parameters for g4simple MC");
 
@@ -222,31 +156,58 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
       fPhysListCmd->SetGuidance("Set reference physics list to be used");
       //fPhysListCmd->SetCandidates("Shielding ShieldingNoRDM QGSP_BERT_HP");
 
-      fSeedWithUUIDCmd = new G4UIcmdWithoutParameter("/g4simple/seedWithUUID", this);
-      fSeedWithUUIDCmd->SetGuidance("Seed random number generator quickly with an almost random number");
-      fSeedWithUUIDCmd->SetGuidance("Generated using ROOT's TUUID class");
+      fDetectorCmd = new G4UIcmdWithAString("/g4simple/setDetectorGDML", this);
+      fDetectorCmd->SetGuidance("Provide GDML filename specifying the detector construction");
+
+      fRandomSeedCmd = new G4UIcmdWithABool("/g4simple/setRandomSeed", this);
+      fRandomSeedCmd->SetParameterName("useURandom", true);
+      fRandomSeedCmd->SetDefaultValue(false);
+      fRandomSeedCmd->SetGuidance("Seed random number generator with a read from /dev/random");
+      fRandomSeedCmd->SetGuidance("Set useURandom to true to read instead from /dev/urandom (faster but less random)");
     }
 
     ~G4SimpleRunManager() {
       delete fDirectory;
       delete fPhysListCmd;
-      delete fSeedWithUUIDCmd;
+      delete fDetectorCmd;
+      delete fRandomSeedCmd;
     }
 
     void SetNewValue(G4UIcommand *command, G4String newValues) {
       if(command == fPhysListCmd) {
         SetUserInitialization((new G4PhysListFactory)->GetReferencePhysList(newValues));
-        SetUserAction(new G4SimpleSteppingAction);
-        SetUserAction(new G4SimplePrimaryGeneratorAction);
+        SetUserAction(new G4SimplePrimaryGeneratorAction); // must come after phys list
+        SetUserAction(new G4SimpleSteppingAction); // must come after phys list
       }
-      else if(command == fSeedWithUUIDCmd) {
-        TUUID uuid;
-        UInt_t buffer[4];
-        uuid.GetUUID((UChar_t*) buffer);
-        long seed = (buffer[0] + buffer[1] + buffer[2] + buffer[3]);
+      else if(command == fDetectorCmd) {
+        G4GDMLParser parser;
+        parser.Read(newValues);
+        SetUserInitialization(new G4SimpleDetectorConstruction(parser.GetWorldVolume()));
+      }
+      else if(command == fDetectorCmd) {
+      }
+      else if(command == fRandomSeedCmd) {
+        bool useURandom = fRandomSeedCmd->GetNewBoolValue(newValues);
+        string path = useURandom ?  "/dev/urandom" : "/dev/random";
+
+        ifstream devrandom(path.c_str());
+        if (!devrandom.good()) {
+          cout << "setRandomSeed: couldn't open " << path << ". Your seed is not set." << endl;
+          return;
+        }
+
+        long seed;
+        devrandom.read((char*)(&seed), sizeof(long));
+
+        // Negative seeds give nasty sequences for some engines. For example,
+        // CLHEP's JamesRandom.cc contains a specific check for this. Might 
+        // as well make all seeds positive; randomness is not affected (one 
+        // bit of randomness goes unused).
         if (seed < 0) seed = -seed;
+
         CLHEP::HepRandom::setTheSeed(seed);
         cout << "CLHEP::HepRandom seed set to: " << seed << endl;
+        devrandom.close();
       }
     }
 };
@@ -259,8 +220,8 @@ int main(int argc, char** argv)
     cout << "Usage: " << argv[0] << " [macro]" << endl;
     return 1;
   }
-  G4SimpleRunManager* runManager = new G4SimpleRunManager;
 
+  G4SimpleRunManager* runManager = new G4SimpleRunManager;
   G4VisManager* visManager = new G4VisExecutive;
   visManager->Initialize();
 
