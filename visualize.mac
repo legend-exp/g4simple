@@ -1,5 +1,10 @@
+# use QGSP_BERT just to have something - this one loads fast.
 /g4simple/setReferencePhysList QGSP_BERT
-/g4simple/setDetectorGDML assembly.gdml
+
+# as an example, use assembly.gdml from 
+# geant4/examples/extended/persistency/gdml/G01
+/control/getEnv G4INSTALL
+/g4simple/setDetectorGDML {G4INSTALL}/../examples/extended/persistency/gdml/G01/assembly.gdml
 
 /run/initialize
 
