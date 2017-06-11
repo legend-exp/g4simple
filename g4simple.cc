@@ -46,6 +46,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     vector<G4double> fX;
     vector<G4double> fY;
     vector<G4double> fZ;
+    vector<G4double> fT;
 
   public:
     G4SimpleSteppingAction() : fFile(NULL), fTree(NULL), fNEvents(0) { 
@@ -76,6 +77,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fX.clear();
       fY.clear();
       fZ.clear();
+      fT.clear();
     }
 
     void UserSteppingAction(const G4Step *step) {
@@ -92,6 +94,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fTree->Branch("x", &fX);
         fTree->Branch("y", &fY);
         fTree->Branch("z", &fZ);
+        fTree->Branch("t", &fT);
         fTree->Branch("nEvents", &fNEvents, "N/I");
         ResetVars();
         fNEvents = G4RunManager::GetRunManager()->GetCurrentRun()->GetNumberOfEventToBeProcessed();
@@ -115,6 +118,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fX.push_back(step->GetPostStepPoint()->GetPosition().x());
       fY.push_back(step->GetPostStepPoint()->GetPosition().y());
       fZ.push_back(step->GetPostStepPoint()->GetPosition().z());
+      fT.push_back(step->GetPostStepPoint()->GetGlobalTime());
     }
 
 };
