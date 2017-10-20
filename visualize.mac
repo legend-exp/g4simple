@@ -31,3 +31,6 @@
 #/vis/ogl/set/printSize 2000 2000
 #/vis/ogl/printEPS
 
+# To draw the GDML file in ROOT:
+# TGeoManager::Import("file.gdml");
+# gGeoManager->GetTopVolume()->Draw("ogl");

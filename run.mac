@@ -12,8 +12,18 @@
 /control/getEnv G4INSTALL
 /g4simple/setDetectorGDML {G4INSTALL}/../examples/extended/persistency/gdml/G01/assembly.gdml
 
-
+# Uncomment the following line to change the name of the output file (by default
+# it's g4simpleout.root)
 #/g4simple/setOutputFileName out.root
+
+# Steps are only written out if they are in a volume that matches a pattern set
+# via the setVolID command
+# Example setting a full volume name (exact match):
+/g4simple/setVolID World_PV 1
+# Example using a regular expression to match multiple volumes (in this case
+# they have different replication numbers):
+/g4simple/setVolID .*TubeVol.* 2
+# Comment out all setVolID commands to get all steps in all volumes
 
 /run/initialize
 
@@ -23,4 +33,14 @@
 /gps/position 0 0 0 m
 
 /run/beamOn 10000
+
+
+# Example post-run analysis in root: plot spectra of total Edep (>0) in each TubeVol 
+# root g4simpleout.root
+# TH1F h("h", "Summed Edep", 110, 0.001, 1.101);
+# h.SetLineColor(kRed);
+# tree->Draw("Sum$(Edep*(vnID==2&&tRep==1)) >> h");
+# tree->Draw("Sum$(Edep*(vnID==2&&tRep==2))", "", "SAME");
+# h.SetMinimum(0.1);
+# c1->SetLogy();
 
