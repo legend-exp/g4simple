@@ -1,5 +1,7 @@
 #include <iostream>
 #include <vector>
+#include <string>
+#include <regex>
 
 #include "G4RunManager.hh"
 #include "G4Run.hh"
@@ -18,9 +20,13 @@
 #include "G4UIcmdWithAString.hh"
 #include "G4UIcmdWithABool.hh"
 #include "G4GDMLParser.hh"
+#include "G4VTouchable.hh"
+#include "G4PhysicalVolumeStore.hh"
 
 #include "TTree.h"
 #include "TFile.h"
+#include "TList.h"
+#include "TObjString.h"
 
 
 using namespace std;
@@ -31,7 +37,11 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
 {
   protected:
     G4UIcmdWithAString* fFileNameCmd;
-    std::string fFileName;
+    G4UIcommand* fVolIDCmd;
+
+    string fFileName;
+    vector<regex> fPatterns;
+    vector<int> fPatternIDs;
     TFile* fFile;
     TTree* fTree;
  
@@ -47,12 +57,19 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     vector<G4double> fY;
     vector<G4double> fZ;
     vector<G4double> fT;
+    vector<G4int> fVolID;
+    vector<G4int> fIRep;
+    map<G4VPhysicalVolume*, int> fVolIDMap;
 
   public:
     G4SimpleSteppingAction() : fFile(NULL), fTree(NULL), fNEvents(0) { 
       ResetVars(); 
       fFileNameCmd = new G4UIcmdWithAString("/g4simple/setOutputFileName", this);
       fFileNameCmd->SetGuidance("Set file name");
+      fVolIDCmd = new G4UIcommand("/g4simple/setVolID", this);
+      fVolIDCmd->SetParameter(new G4UIparameter("pattern", 's', false));
+      fVolIDCmd->SetParameter(new G4UIparameter("id", 'i', false));
+      fVolIDCmd->SetGuidance("Volumes with name matching [pattern] will be given volume ID [id]");
     }
     ~G4SimpleSteppingAction() { 
       if(fFile) { 
@@ -61,10 +78,24 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fFile->Close(); 
       } 
       delete fFileNameCmd;
+      delete fVolIDCmd;
     } 
 
     void SetNewValue(G4UIcommand *command, G4String newValues) {
       if(command == fFileNameCmd) fFileName = newValues;
+      else if(command == fVolIDCmd) {
+        istringstream is(newValues);
+        string pattern;
+        int id;
+        is >> pattern >> id;
+        if(id == 0 || id == -1) {
+          cout << "Pattern " << pattern << ": Can't use ID = " << id << endl;
+        }
+        else {
+          fPatterns.push_back(regex(pattern));
+          fPatternIDs.push_back(id);
+        }
+      }
     }
 
     void ResetVars() {
@@ -78,6 +109,8 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fY.clear();
       fZ.clear();
       fT.clear();
+      fVolID.clear();
+      fIRep.clear();
     }
 
     void UserSteppingAction(const G4Step *step) {
@@ -95,9 +128,12 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fTree->Branch("y", &fY);
         fTree->Branch("z", &fZ);
         fTree->Branch("t", &fT);
+        fTree->Branch("volID", &fVolID);
+        fTree->Branch("iRep", &fIRep);
         fTree->Branch("nEvents", &fNEvents, "N/I");
         ResetVars();
         fNEvents = G4RunManager::GetRunManager()->GetCurrentRun()->GetNumberOfEventToBeProcessed();
+        fVolIDMap.clear();
       }
       else {
         G4int eventID = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
@@ -109,6 +145,38 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         }
       }
 
+      G4VPhysicalVolume* vpv = step->GetPostStepPoint()->GetPhysicalVolume();
+      G4int id = fVolIDMap[vpv];
+      if(id == 0 && fPatterns.size() > 0) {
+        string name = (vpv == NULL) ? "NULL" : vpv->GetName();
+        for(size_t i=0; i<fPatterns.size(); i++) {
+          if(regex_match(name, fPatterns[i])) {
+            id = fPatternIDs[i];
+            break;
+          }
+        }
+        if(id == 0) id = -1;
+        fVolIDMap[vpv] = id;
+      }
+
+      // record primary event info on first step
+      if(fVolID.size() == 0) {
+        fVolID.push_back(id == -1 ? 0 : id);
+        fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
+        fTrackID.push_back(step->GetTrack()->GetTrackID());
+        fParentID.push_back(step->GetTrack()->GetParentID());
+        fStepNumber.push_back(step->GetTrack()->GetCurrentStepNumber());
+        fKE.push_back(step->GetPreStepPoint()->GetKineticEnergy());
+        fEDep.push_back(0);
+        fX.push_back(step->GetPreStepPoint()->GetPosition().x());
+        fY.push_back(step->GetPreStepPoint()->GetPosition().y());
+        fZ.push_back(step->GetPreStepPoint()->GetPosition().z());
+        fT.push_back(step->GetPreStepPoint()->GetGlobalTime());
+        fIRep.push_back(step->GetPreStepPoint()->GetTouchable()->GetReplicaNumber());
+      }
+      if(id == -1) return; 
+
+      fVolID.push_back(id);
       fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
       fTrackID.push_back(step->GetTrack()->GetTrackID());
       fParentID.push_back(step->GetTrack()->GetParentID());
@@ -119,6 +187,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fY.push_back(step->GetPostStepPoint()->GetPosition().y());
       fZ.push_back(step->GetPostStepPoint()->GetPosition().z());
       fT.push_back(step->GetPostStepPoint()->GetGlobalTime());
+      fIRep.push_back(step->GetPostStepPoint()->GetTouchable()->GetReplicaNumber());
     }
 
 };
@@ -150,6 +219,7 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
     G4UIcmdWithAString* fPhysListCmd;
     G4UIcmdWithAString* fDetectorCmd;
     G4UIcmdWithABool* fRandomSeedCmd;
+    G4UIcmdWithAString* fListVolsCmd;
 
   public:
     G4SimpleRunManager() {
@@ -158,7 +228,6 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
 
       fPhysListCmd = new G4UIcmdWithAString("/g4simple/setReferencePhysList", this);
       fPhysListCmd->SetGuidance("Set reference physics list to be used");
-      //fPhysListCmd->SetCandidates("Shielding ShieldingNoRDM QGSP_BERT_HP");
 
       fDetectorCmd = new G4UIcmdWithAString("/g4simple/setDetectorGDML", this);
       fDetectorCmd->SetGuidance("Provide GDML filename specifying the detector construction");
@@ -168,6 +237,12 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
       fRandomSeedCmd->SetDefaultValue(false);
       fRandomSeedCmd->SetGuidance("Seed random number generator with a read from /dev/random");
       fRandomSeedCmd->SetGuidance("Set useURandom to true to read instead from /dev/urandom (faster but less random)");
+
+      fListVolsCmd = new G4UIcmdWithAString("/g4simple/listPhysVols", this);
+      fListVolsCmd->SetParameterName("pattern", true);
+      fListVolsCmd->SetGuidance("List name of all instantiated physical volumes");
+      fListVolsCmd->SetGuidance("Optionally supply a regex pattern to only list matching volume names");
+      fListVolsCmd->AvailableForStates(G4State_Idle, G4State_GeomClosed, G4State_EventProc);
     }
 
     ~G4SimpleRunManager() {
@@ -175,6 +250,7 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
       delete fPhysListCmd;
       delete fDetectorCmd;
       delete fRandomSeedCmd;
+      delete fListVolsCmd;
     }
 
     void SetNewValue(G4UIcommand *command, G4String newValues) {
@@ -187,8 +263,6 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
         G4GDMLParser parser;
         parser.Read(newValues);
         SetUserInitialization(new G4SimpleDetectorConstruction(parser.GetWorldVolume()));
-      }
-      else if(command == fDetectorCmd) {
       }
       else if(command == fRandomSeedCmd) {
         bool useURandom = fRandomSeedCmd->GetNewBoolValue(newValues);
@@ -212,6 +286,18 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
         CLHEP::HepRandom::setTheSeed(seed);
         cout << "CLHEP::HepRandom seed set to: " << seed << endl;
         devrandom.close();
+      }
+      else if(command == fListVolsCmd) {
+        regex pattern(newValues);
+        bool doMatching = (newValues != "");
+        G4PhysicalVolumeStore* volumeStore = G4PhysicalVolumeStore::GetInstance();
+        cout << "Physical volumes";
+        if(doMatching) cout << " matching pattern " << newValues;
+        cout << ":" << endl;
+        for(size_t i=0; i<volumeStore->size(); i++) {
+          string name = volumeStore->at(i)->GetName();
+          if(!doMatching || regex_match(name, pattern)) cout << name << endl;
+        }
       }
     }
 };
