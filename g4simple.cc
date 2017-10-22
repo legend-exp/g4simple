@@ -77,7 +77,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     ~G4SimpleSteppingAction() { 
       if(fFile) { 
         if(fPID.size()>0) fTree->Fill();
-        fTree->Write(); 
+        fTree->Write(fTree->GetName(), TObject::kOverwrite); 
         fFile->Close(); 
       } 
       delete fFileNameCmd;
