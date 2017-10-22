@@ -20,7 +20,7 @@
 #include "G4UIcmdWithAString.hh"
 #include "G4UIcmdWithABool.hh"
 #include "G4GDMLParser.hh"
-#include "G4VTouchable.hh"
+#include "G4TouchableHandle.hh"
 #include "G4PhysicalVolumeStore.hh"
 
 #include "TTree.h"
@@ -56,6 +56,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     vector<G4double> fX;
     vector<G4double> fY;
     vector<G4double> fZ;
+    vector<G4double> fLX;
+    vector<G4double> fLY;
+    vector<G4double> fLZ;
     vector<G4double> fT;
     vector<G4int> fVolID;
     vector<G4int> fIRep;
@@ -84,10 +87,10 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     void SetNewValue(G4UIcommand *command, G4String newValues) {
       if(command == fFileNameCmd) fFileName = newValues;
       else if(command == fVolIDCmd) {
-        istringstream is(newValues);
+        istringstream iss(newValues);
         string pattern;
         int id;
-        is >> pattern >> id;
+        iss >> pattern >> id;
         if(id == 0 || id == -1) {
           cout << "Pattern " << pattern << ": Can't use ID = " << id << endl;
         }
@@ -108,6 +111,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fX.clear();
       fY.clear();
       fZ.clear();
+      fLX.clear();
+      fLY.clear();
+      fLZ.clear();
       fT.clear();
       fVolID.clear();
       fIRep.clear();
@@ -127,6 +133,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fTree->Branch("x", &fX);
         fTree->Branch("y", &fY);
         fTree->Branch("z", &fZ);
+        fTree->Branch("lx", &fLX);
+        fTree->Branch("ly", &fLY);
+        fTree->Branch("lz", &fLZ);
         fTree->Branch("t", &fT);
         fTree->Branch("volID", &fVolID);
         fTree->Branch("iRep", &fIRep);
@@ -168,11 +177,17 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fStepNumber.push_back(step->GetTrack()->GetCurrentStepNumber());
         fKE.push_back(step->GetPreStepPoint()->GetKineticEnergy());
         fEDep.push_back(0);
-        fX.push_back(step->GetPreStepPoint()->GetPosition().x());
-        fY.push_back(step->GetPreStepPoint()->GetPosition().y());
-        fZ.push_back(step->GetPreStepPoint()->GetPosition().z());
+        G4ThreeVector pos = step->GetPreStepPoint()->GetPosition();
+        G4TouchableHandle vol = step->GetPreStepPoint()->GetTouchableHandle();
+        G4ThreeVector lPos = vol->GetHistory()->GetTopTransform().TransformPoint(pos);
+        fX.push_back(pos.x());
+        fY.push_back(pos.y());
+        fZ.push_back(pos.z());
+        fLX.push_back(lPos.x());
+        fLY.push_back(lPos.y());
+        fLZ.push_back(lPos.z());
         fT.push_back(step->GetPreStepPoint()->GetGlobalTime());
-        fIRep.push_back(step->GetPreStepPoint()->GetTouchable()->GetReplicaNumber());
+        fIRep.push_back(vol->GetReplicaNumber());
       }
       if(id == -1) return; 
 
@@ -183,11 +198,17 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fStepNumber.push_back(step->GetTrack()->GetCurrentStepNumber());
       fKE.push_back(step->GetTrack()->GetKineticEnergy());
       fEDep.push_back(step->GetTotalEnergyDeposit());
-      fX.push_back(step->GetPostStepPoint()->GetPosition().x());
-      fY.push_back(step->GetPostStepPoint()->GetPosition().y());
-      fZ.push_back(step->GetPostStepPoint()->GetPosition().z());
+      G4ThreeVector pos = step->GetPostStepPoint()->GetPosition();
+      G4TouchableHandle vol = step->GetPostStepPoint()->GetTouchableHandle();
+      G4ThreeVector lPos = vol->GetHistory()->GetTopTransform().TransformPoint(pos);
+      fX.push_back(pos.x());
+      fY.push_back(pos.y());
+      fZ.push_back(pos.z());
+      fLX.push_back(lPos.x());
+      fLY.push_back(lPos.y());
+      fLZ.push_back(lPos.z());
       fT.push_back(step->GetPostStepPoint()->GetGlobalTime());
-      fIRep.push_back(step->GetPostStepPoint()->GetTouchable()->GetReplicaNumber());
+      fIRep.push_back(vol->GetReplicaNumber());
     }
 
 };
@@ -217,7 +238,7 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
   private:
     G4UIdirectory* fDirectory;
     G4UIcmdWithAString* fPhysListCmd;
-    G4UIcmdWithAString* fDetectorCmd;
+    G4UIcommand* fDetectorCmd;
     G4UIcmdWithABool* fRandomSeedCmd;
     G4UIcmdWithAString* fListVolsCmd;
 
@@ -229,7 +250,11 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
       fPhysListCmd = new G4UIcmdWithAString("/g4simple/setReferencePhysList", this);
       fPhysListCmd->SetGuidance("Set reference physics list to be used");
 
-      fDetectorCmd = new G4UIcmdWithAString("/g4simple/setDetectorGDML", this);
+      fDetectorCmd = new G4UIcommand("/g4simple/setDetectorGDML", this);
+      fDetectorCmd->SetParameter(new G4UIparameter("filename", 's', false));
+      G4UIparameter* validatePar = new G4UIparameter("validate", 'b', true);
+      validatePar->SetDefaultValue("true");
+      fDetectorCmd->SetParameter(validatePar);
       fDetectorCmd->SetGuidance("Provide GDML filename specifying the detector construction");
 
       fRandomSeedCmd = new G4UIcmdWithABool("/g4simple/setRandomSeed", this);
@@ -260,8 +285,12 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
         SetUserAction(new G4SimpleSteppingAction); // must come after phys list
       }
       else if(command == fDetectorCmd) {
+        istringstream iss(newValues);
+        string filename;
+        string validate;
+        iss >> filename >> validate;
         G4GDMLParser parser;
-        parser.Read(newValues);
+        parser.Read(filename, validate == "1" || validate == "true" || validate == "True");
         SetUserInitialization(new G4SimpleDetectorConstruction(parser.GetWorldVolume()));
       }
       else if(command == fRandomSeedCmd) {
