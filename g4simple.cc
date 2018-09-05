@@ -23,11 +23,12 @@
 #include "G4TouchableHandle.hh"
 #include "G4PhysicalVolumeStore.hh"
 
-#include "TTree.h"
-#include "TFile.h"
-#include "TList.h"
-#include "TObjString.h"
-
+#include "g4root.hh"
+#include "g4xml.hh"
+#include "g4csv.hh"
+#ifdef GEANT4_USE_HDF5
+#include "g4hdf5.hh"
+#endif
 
 using namespace std;
 using namespace CLHEP;
@@ -36,21 +37,20 @@ using namespace CLHEP;
 class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
 {
   protected:
-    G4UIcmdWithAString* fFileNameCmd;
     G4UIcommand* fVolIDCmd;
+    G4UIcmdWithAString* fOutputFormatCmd;
 
-    string fFileName;
+    enum EFormat { kCsv, kXml, kRoot, kHdf5 };
+    EFormat fFormat;
+
     vector<regex> fPatterns;
     vector<int> fPatternIDs;
-    TFile* fFile;
-    TTree* fTree;
  
     G4int fNEvents;
-
     vector<G4int> fPID; 
     vector<G4int> fTrackID;
     vector<G4int> fParentID;
-    vector<G4double> fStepNumber;
+    vector<G4int> fStepNumber;
     vector<G4double> fKE;
     vector<G4double> fEDep;
     vector<G4double> fX;
@@ -62,31 +62,61 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     vector<G4double> fT;
     vector<G4int> fVolID;
     vector<G4int> fIRep;
+
     map<G4VPhysicalVolume*, int> fVolIDMap;
 
   public:
-    G4SimpleSteppingAction() : fFile(NULL), fTree(NULL), fNEvents(0) { 
+    G4SimpleSteppingAction() : fNEvents(0) { 
       ResetVars(); 
-      fFileNameCmd = new G4UIcmdWithAString("/g4simple/setOutputFileName", this);
-      fFileNameCmd->SetGuidance("Set file name");
+
       fVolIDCmd = new G4UIcommand("/g4simple/setVolID", this);
       fVolIDCmd->SetParameter(new G4UIparameter("pattern", 's', false));
       fVolIDCmd->SetParameter(new G4UIparameter("id", 'i', false));
       fVolIDCmd->SetGuidance("Volumes with name matching [pattern] will be given volume ID [id]");
+
+      fOutputFormatCmd = new G4UIcmdWithAString("/g4simple/setOutputFormat", this);
+      string candidates = "csv xml";
+      candidates += " root";
+      candidates += " hdf5";
+      fOutputFormatCmd->SetCandidates(candidates.c_str());
+      fOutputFormatCmd->SetGuidance("Set output format");
+      fFormat = kCsv;
     }
+
+    G4VAnalysisManager* GetAnalysisManager() {
+      if(fFormat == kCsv) return G4Csv::G4AnalysisManager::Instance();
+      if(fFormat == kXml) return G4Xml::G4AnalysisManager::Instance();
+      if(fFormat == kRoot) return G4Root::G4AnalysisManager::Instance();
+      if(fFormat == kHdf5) {
+#ifdef GEANT4_USE_HDF5
+        return G4Hdf5::G4AnalysisManager::Instance();
+#else
+        cout << "Warning: You need to compile Geant4 with cmake flag "
+             << "-DGEANT4_USE_HDF5 in order to generate the HDF5 output format.  "
+             << "Reverting to ROOT." << endl;
+        return G4Root::G4AnalysisManager::Instance();
+#endif
+      }
+      cout << "Error: invalid format " << fFormat << endl;
+      return NULL;
+    }
+
     ~G4SimpleSteppingAction() { 
-      if(fFile) { 
-        if(fPID.size()>0) fTree->Fill();
-        fTree->Write(fTree->GetName(), TObject::kOverwrite); 
-        fFile->Close(); 
-      } 
-      delete fFileNameCmd;
+      G4VAnalysisManager* man = GetAnalysisManager();
+      if(man->IsOpenFile()) {
+        if(fPID.size()>0) {
+          man->FillNtupleIColumn(0, fNEvents);
+          man->AddNtupleRow();
+        }
+        man->Write();
+        man->CloseFile();
+      }
+      delete man;
       delete fVolIDCmd;
     } 
 
     void SetNewValue(G4UIcommand *command, G4String newValues) {
-      if(command == fFileNameCmd) fFileName = newValues;
-      else if(command == fVolIDCmd) {
+      if(command == fVolIDCmd) {
         istringstream iss(newValues);
         string pattern;
         int id;
@@ -98,6 +128,12 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
           fPatterns.push_back(regex(pattern));
           fPatternIDs.push_back(id);
         }
+      }
+      if(command == fOutputFormatCmd) {
+        if(newValues == "csv") fFormat = kCsv;
+        if(newValues == "xml") fFormat = kXml;
+        if(newValues == "root") fFormat = kRoot;
+        if(newValues == "hdf5") fFormat = kHdf5;
       }
     }
 
@@ -120,26 +156,35 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     }
 
     void UserSteppingAction(const G4Step *step) {
-      if(fFile == NULL) {
-	if(fFileName == "") fFile = TFile::Open("g4simpleout.root", "recreate");
-	else fFile = TFile::Open(fFileName.c_str(), "recreate");
-        fTree = new TTree("tree", "tree");
-        fTree->Branch("pid", &fPID);
-        fTree->Branch("trackID", &fTrackID);
-        fTree->Branch("parentID", &fParentID);
-        fTree->Branch("step", &fStepNumber);
-        fTree->Branch("KE", &fKE);
-        fTree->Branch("Edep", &fEDep);
-        fTree->Branch("x", &fX);
-        fTree->Branch("y", &fY);
-        fTree->Branch("z", &fZ);
-        fTree->Branch("lx", &fLX);
-        fTree->Branch("ly", &fLY);
-        fTree->Branch("lz", &fLZ);
-        fTree->Branch("t", &fT);
-        fTree->Branch("volID", &fVolID);
-        fTree->Branch("iRep", &fIRep);
-        fTree->Branch("nEvents", &fNEvents, "N/I");
+      G4VAnalysisManager* man = GetAnalysisManager();
+
+      if(!man->IsOpenFile()) {
+        // need to create the ntuple before opening the file in order to avoid
+        // writing error in csv, xml, and hdf5
+        man->CreateNtuple("g4simple", "steps data");
+        man->CreateNtupleIColumn("nEvents");
+        man->CreateNtupleIColumn("pid", fPID);
+        man->CreateNtupleIColumn("trackID", fTrackID);
+        man->CreateNtupleIColumn("parentID", fParentID);
+        man->CreateNtupleIColumn("step", fStepNumber);
+        man->CreateNtupleDColumn("KE", fKE);
+        man->CreateNtupleDColumn("Edep", fEDep);
+        man->CreateNtupleDColumn("x", fX);
+        man->CreateNtupleDColumn("y", fY);
+        man->CreateNtupleDColumn("z", fZ);
+        man->CreateNtupleDColumn("lx", fLX);
+        man->CreateNtupleDColumn("ly", fLY);
+        man->CreateNtupleDColumn("lz", fLZ);
+        man->CreateNtupleDColumn("t", fT);
+        man->CreateNtupleIColumn("volID", fVolID);
+        man->CreateNtupleIColumn("iRep", fIRep);
+        man->FinishNtuple();
+
+        // look for filename set by macro command: /analysis/setFileName [name]
+	if(man->GetFileName() == "") man->SetFileName("g4simpleout");
+        cout << "Opening file " << man->GetFileName() << endl;
+        man->OpenFile();
+
         ResetVars();
         fNEvents = G4RunManager::GetRunManager()->GetCurrentRun()->GetNumberOfEventToBeProcessed();
         fVolIDMap.clear();
@@ -148,7 +193,10 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         G4int eventID = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
         static G4int lastEventID = eventID;
         if(eventID != lastEventID) {
-          if(fPID.size()>0) fTree->Fill();
+          if(fPID.size()>0) {
+            man->FillNtupleIColumn(0, fNEvents);
+            man->AddNtupleRow();
+          }
           ResetVars();
           lastEventID = eventID;
         }

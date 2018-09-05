@@ -4,17 +4,23 @@
 
 /g4simple/setRandomSeed true
 
+# Need to set the physics list before we can do some of the other commands. 
 /g4simple/setReferencePhysList Shielding
 #/physics_engine/tailor/MuonNuclear on
 
 # as an example, use assembly.gdml from 
 # geant4/examples/extended/persistency/gdml/G01
+# the bool after the file name turns validation on / off
 /control/getEnv G4INSTALL
-/g4simple/setDetectorGDML {G4INSTALL}/../examples/extended/persistency/gdml/G01/assembly.gdml
+/g4simple/setDetectorGDML {G4INSTALL}/../examples/extended/persistency/gdml/G01/assembly.gdml false
 
+#/g4simple/setOutputFormat csv
+#/g4simple/setOutputFormat xml
+#/g4simple/setOutputFormat root
+/g4simple/setOutputFormat hdf5
 # Uncomment the following line to change the name of the output file (by default
-# it's g4simpleout.root)
-#/g4simple/setOutputFileName out.root
+# it's g4simpleout.[ext])
+# /analysis/setFileName name out.root
 
 # Steps are only written out if they are in a volume that matches a pattern set
 # via the setVolID command
