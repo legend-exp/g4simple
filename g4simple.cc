@@ -161,7 +161,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       if(!man->IsOpenFile()) {
         // need to create the ntuple before opening the file in order to avoid
         // writing error in csv, xml, and hdf5
-        man->CreateNtuple("g4simple", "steps data");
+        man->CreateNtuple("g4stree", "steps data");
         man->CreateNtupleIColumn("nEvents");
         man->CreateNtupleIColumn("pid", fPID);
         man->CreateNtupleIColumn("trackID", fTrackID);
