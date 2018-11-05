@@ -14,5 +14,7 @@ plan to add a G4tgrLineProcessor-based geometry input scheme.
 Output: currently specific to the implemented geometry, will be converted 
 to a generic scheme (first ROOT, then JSON tracks, then ultimately maybe HDF5)
 
+Can be built with the supplied makefile for typical use.
+CMakeLists.txt file provided for installing with cmake. 
 
 See similar project by Jing Liu at https://github.com/jintonic/gears
