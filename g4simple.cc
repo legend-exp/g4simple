@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <regex>
+#include <utility>
 
 #include "G4RunManager.hh"
 #include "G4Run.hh"
@@ -19,6 +20,7 @@
 #include "G4UIdirectory.hh"
 #include "G4UIcmdWithAString.hh"
 #include "G4UIcmdWithABool.hh"
+#include "G4UIcmdWithAnInteger.hh"
 #include "G4GDMLParser.hh"
 #include "G4TouchableHandle.hh"
 #include "G4PhysicalVolumeStore.hh"
@@ -43,8 +45,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     enum EFormat { kCsv, kXml, kRoot, kHdf5 };
     EFormat fFormat;
 
-    vector<regex> fPatterns;
-    vector<int> fPatternIDs;
+    vector< pair<regex,string> > fPatternPairs;
  
     G4int fNEvents;
     vector<G4int> fPID; 
@@ -71,8 +72,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
 
       fVolIDCmd = new G4UIcommand("/g4simple/setVolID", this);
       fVolIDCmd->SetParameter(new G4UIparameter("pattern", 's', false));
-      fVolIDCmd->SetParameter(new G4UIparameter("id", 'i', false));
-      fVolIDCmd->SetGuidance("Volumes with name matching [pattern] will be given volume ID [id]");
+      fVolIDCmd->SetParameter(new G4UIparameter("replacement", 's', false));
+      fVolIDCmd->SetGuidance("Volumes with name matching [pattern] will be given volume ID "
+                             "based on the [replacement] rule. Replacement rule must produce an integer.");
 
       fOutputFormatCmd = new G4UIcmdWithAString("/g4simple/setOutputFormat", this);
       string candidates = "csv xml";
@@ -119,15 +121,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       if(command == fVolIDCmd) {
         istringstream iss(newValues);
         string pattern;
-        int id;
-        iss >> pattern >> id;
-        if(id == 0 || id == -1) {
-          cout << "Pattern " << pattern << ": Can't use ID = " << id << endl;
-        }
-        else {
-          fPatterns.push_back(regex(pattern));
-          fPatternIDs.push_back(id);
-        }
+        string replacement;
+        iss >> pattern >> replacement;
+        fPatternPairs.push_back(pair<regex,string>(regex(pattern),replacement));
       }
       if(command == fOutputFormatCmd) {
         if(newValues == "csv") fFormat = kCsv;
@@ -204,11 +200,11 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
 
       G4VPhysicalVolume* vpv = step->GetPostStepPoint()->GetPhysicalVolume();
       G4int id = fVolIDMap[vpv];
-      if(id == 0 && fPatterns.size() > 0) {
+      if(id == 0 && fPatternPairs.size() > 0) {
         string name = (vpv == NULL) ? "NULL" : vpv->GetName();
-        for(size_t i=0; i<fPatterns.size(); i++) {
-          if(regex_match(name, fPatterns[i])) {
-            id = fPatternIDs[i];
+        for(auto& pp : fPatternPairs) {
+          if(regex_match(name, pp.first)) {
+            id = stoi(regex_replace(name,pp.first,pp.second));
             break;
           }
         }
@@ -287,6 +283,7 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
     G4UIdirectory* fDirectory;
     G4UIcmdWithAString* fPhysListCmd;
     G4UIcommand* fDetectorCmd;
+    G4UIcmdWithAnInteger* fFixSeedCmd;
     G4UIcmdWithABool* fRandomSeedCmd;
     G4UIcmdWithAString* fListVolsCmd;
 
@@ -305,6 +302,10 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
       fDetectorCmd->SetParameter(validatePar);
       fDetectorCmd->SetGuidance("Provide GDML filename specifying the detector construction");
 
+      fFixSeedCmd = new G4UIcmdWithAnInteger("/g4simple/fixRandomSeed", this);
+      fFixSeedCmd->SetParameterName("seed", false);
+      fFixSeedCmd->SetGuidance("Fix the random seed to the given value");
+
       fRandomSeedCmd = new G4UIcmdWithABool("/g4simple/setRandomSeed", this);
       fRandomSeedCmd->SetParameterName("useURandom", true);
       fRandomSeedCmd->SetDefaultValue(false);
@@ -322,6 +323,7 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
       delete fDirectory;
       delete fPhysListCmd;
       delete fDetectorCmd;
+      delete fFixSeedCmd;
       delete fRandomSeedCmd;
       delete fListVolsCmd;
     }
@@ -340,6 +342,10 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
         G4GDMLParser parser;
         parser.Read(filename, validate == "1" || validate == "true" || validate == "True");
         SetUserInitialization(new G4SimpleDetectorConstruction(parser.GetWorldVolume()));
+      }
+      else if(command == fFixSeedCmd) {
+        long seed = fFixSeedCmd->GetNewIntValue(newValues);
+        CLHEP::HepRandom::setTheSeed(seed);
       }
       else if(command == fRandomSeedCmd) {
         bool useURandom = fRandomSeedCmd->GetNewBoolValue(newValues);
