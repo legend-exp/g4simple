@@ -9,7 +9,7 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-  double pctResAt1MeV = 1.;
+  double pctResAt1MeV = 0.15;
 
   if(argc != 2) {
     cout << "Usage: postprocroot [filename.root]" << endl;
@@ -37,23 +37,27 @@ int main(int argc, char** argv)
   outTree->Branch("energy", &energy);
   vector<int> detID;
   outTree->Branch("detID", &detID);
+  vector<int> volIDOut;
+  outTree->Branch("volID", &volIDOut);
   
   while(treeReader.Next()) {
     energy.clear();
     detID.clear();
-    map<int,double> hits;
+    volIDOut.clear();
+    map<pair<int,int>,double> hits;
     for(size_t i=0; i < Edep->size(); i++) {
-      if(volID->at(i) != 2) continue;
-      hits[iRep->at(i)] += Edep->at(i);
+      if(volID->at(i) != 1) continue;
+      hits[pair<int,int>(volID->at(i),iRep->at(i))] += Edep->at(i);
     }
     for(auto& hit : hits) {
       if(hit.second == 0) continue;
-      detID.push_back(hit.first);
+      volIDOut.push_back(hit.first.first);
+      detID.push_back(hit.first.second);
       double e0 = hit.second;
       double sigma = pctResAt1MeV/100.*sqrt(e0);
       energy.push_back(gRandom->Gaus(e0, sigma));
     }
-    outTree->Fill();
+    if(energy.size() > 0) outTree->Fill();
   }
 
   outTree->Write();

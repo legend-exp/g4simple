@@ -1,2 +1,7 @@
 .*.swp
 g4simpleout.root
+Example/g4simpleout.hdf5
+Example/hdf5PostProc/processed.hdf5
+Example/rootPostProc/postprocroot
+Example/rootPostProc/processed.root
+

@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 # Modify this value for different energy resolution
-pctResAt1MeV = 1.;
+pctResAt1MeV = 0.15;
 
 if(len(sys.argv) != 2):
     print('Usage: postprochdf5.py [filename.hdf5]')
@@ -26,7 +26,7 @@ g4sdf = g4sdf.join(pd.DataFrame(np.array(g4sntuple['iRep']['pages']),
 
 # apply E cut / detID cut and sum Edeps for each event using loc, groupby, and sum
 # write directly into output dataframe
-detector_hits = g4sdf.loc[(g4sdf.Edep>0)&(g4sdf.volID==2)]
+detector_hits = g4sdf.loc[(g4sdf.Edep>0)&(g4sdf.volID==1)]
 procdf = pd.DataFrame(detector_hits.groupby(['event','volID','iRep'], as_index=False)['Edep'].sum())
 procdf = procdf.rename(columns={'iRep':'detID', 'Edep':'energy'})
 

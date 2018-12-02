@@ -8,11 +8,9 @@
 # Need to set the physics list before we can do some of the other commands. 
 /g4simple/setReferencePhysList Shielding
 
-# as an example, use assembly.gdml from 
-# geant4/examples/extended/persistency/gdml/G01
-# the bool after the file name turns validation on / off
-/control/getEnv G4INSTALL
-/g4simple/setDetectorGDML {G4INSTALL}/../examples/extended/persistency/gdml/G01/assembly.gdml false
+# Set GDML file name
+# The bool after the file name turns validation on / off
+/g4simple/setDetectorGDML geCounter.gdml false
 
 # Set up output. Choose a format:
 #/g4simple/setOutputFormat csv
@@ -24,17 +22,16 @@
 #/g4simple/setOutputOption stepwise
 #/g4simple/setOutputOption eventwise
 
-# Uncomment the following line to change the name of the output file (by default
-# it's g4simpleout.[ext])
-# /analysis/setFileName name out.root
+# Change the name of the output file (by default it's g4simple.[ext])
+#/analysis/setFileName geCounterOut
 
 # Steps are only written out if they are in a volume that matches a pattern set
 # via the setVolID command
 # Example setting a full volume name (exact match):
-/g4simple/setVolID World_PV 1
+/g4simple/setVolID geDetector_PV 1
 # Example using a regular expression to match multiple volumes (in this case
 # they have different replication numbers):
-/g4simple/setVolID .*TubeVol.* 2
+#/g4simple/setVolID .*Detector.* 1
 # To get all steps in all volumes, comment out all setVolID commands (removes
 # all volume IDs from output), or uncomment the following line to keep the
 # volume IDs:
@@ -48,12 +45,16 @@
 
 # If you want to see the list of all physical volume names (e.g. to set volume
 # IDs above) uncomment this line
-#/g4simple/listPhysVols
+/g4simple/listPhysVols
 
 # Set up gps after /run/initialize
-/gps/particle gamma
-/gps/energy 1.0 MeV
-/gps/direction 0 0 1
-/gps/position 0 0 0 m
+# This is for 208Tl events distributed throughout the "source" volume
+/gps/particle ion
+/gps/ion 81 208 0 0
+/gps/energy 0 MeV
+/gps/pos/shape Sphere
+/gps/pos/radius 2 mm
+/gps/pos/centre 0 0 5 cm
+/gps/pos/confine source_PV
 
-/run/beamOn 10000
+/run/beamOn 100000

@@ -26,7 +26,7 @@
 /vis/viewer/set/style surface
 /vis/viewer/set/viewpointThetaPhi 70 30
 /vis/viewer/set/background white 0.
-#/vis/viewer/set/lightsThetaPhi 30 30
+/vis/viewer/set/lightsThetaPhi 30 30
 /vis/viewer/set/lightsVector 0 0 1
 /vis/viewer/zoom 4
 #/vis/viewer/pan 0.5 0.3
