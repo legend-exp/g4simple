@@ -337,6 +337,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       // If not in a sensitive volume, get out of here.
       if(id == -1) return; 
 
+      // Don't write Edep=0 steps (unless desired)
+      if(!fRecordAllSteps && step->GetTotalEnergyDeposit() == 0) return;
+
       // Now record post-step info
       fVolID.push_back(id);
       fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
