@@ -39,14 +39,20 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
   protected:
     G4UIcommand* fVolIDCmd;
     G4UIcmdWithAString* fOutputFormatCmd;
+    G4UIcmdWithAString* fOutputOptionCmd;
+    G4UIcmdWithABool* fRecordAllStepsCmd;
 
     enum EFormat { kCsv, kXml, kRoot, kHdf5 };
     EFormat fFormat;
+    enum EOption { kStepWise, kEventWise };
+    EOption fOption;
+    bool fRecordAllSteps;
 
     vector<regex> fPatterns;
     vector<int> fPatternIDs;
  
     G4int fNEvents;
+    G4int fEventNumber;
     vector<G4int> fPID; 
     vector<G4int> fTrackID;
     vector<G4int> fParentID;
@@ -66,7 +72,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     map<G4VPhysicalVolume*, int> fVolIDMap;
 
   public:
-    G4SimpleSteppingAction() : fNEvents(0) { 
+    G4SimpleSteppingAction() : fNEvents(0), fEventNumber(0) {
       ResetVars(); 
 
       fVolIDCmd = new G4UIcommand("/g4simple/setVolID", this);
@@ -75,12 +81,27 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fVolIDCmd->SetGuidance("Volumes with name matching [pattern] will be given volume ID [id]");
 
       fOutputFormatCmd = new G4UIcmdWithAString("/g4simple/setOutputFormat", this);
-      string candidates = "csv xml";
-      candidates += " root";
+      string candidates = "csv xml root";
+#ifdef GEANT4_USE_HDF5
       candidates += " hdf5";
+#endif
       fOutputFormatCmd->SetCandidates(candidates.c_str());
       fOutputFormatCmd->SetGuidance("Set output format");
       fFormat = kCsv;
+
+      fOutputOptionCmd = new G4UIcmdWithAString("/g4simple/setOutputOption", this);
+      candidates = "stepwise eventwise";
+      fOutputOptionCmd->SetCandidates(candidates.c_str());
+      fOutputOptionCmd->SetGuidance("Set output option:");
+      fOutputOptionCmd->SetGuidance("  stepwise: one row per step");
+      fOutputOptionCmd->SetGuidance("  eventwise: one row per event");
+      fOption = kStepWise;
+
+      fRecordAllStepsCmd = new G4UIcmdWithABool("/g4simple/recordAllSteps", this);
+      fRecordAllStepsCmd->SetParameterName("recordAllSteps", true);
+      fRecordAllStepsCmd->SetDefaultValue(true);
+      fRecordAllStepsCmd->SetGuidance("Write out every single step, not just those in sensitive volumes.");
+      fRecordAllSteps = false;
     }
 
     G4VAnalysisManager* GetAnalysisManager() {
@@ -104,15 +125,15 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     ~G4SimpleSteppingAction() { 
       G4VAnalysisManager* man = GetAnalysisManager();
       if(man->IsOpenFile()) {
-        if(fPID.size()>0) {
-          man->FillNtupleIColumn(0, fNEvents);
-          man->AddNtupleRow();
-        }
+        if(fOption == kEventWise && fPID.size()>0) WriteRow(man);
         man->Write();
         man->CloseFile();
       }
       delete man;
       delete fVolIDCmd;
+      delete fOutputFormatCmd;
+      delete fOutputOptionCmd;
+      delete fRecordAllStepsCmd;
     } 
 
     void SetNewValue(G4UIcommand *command, G4String newValues) {
@@ -130,10 +151,31 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         }
       }
       if(command == fOutputFormatCmd) {
-        if(newValues == "csv") fFormat = kCsv;
-        if(newValues == "xml") fFormat = kXml;
-        if(newValues == "root") fFormat = kRoot;
-        if(newValues == "hdf5") fFormat = kHdf5;
+        // also set recommended options.
+        // override option by subsequent call to /g4simple/setOutputOption
+        if(newValues == "csv") {
+          fFormat = kCsv;
+          fOption = kStepWise;
+        }
+        if(newValues == "xml") {
+          fFormat = kXml;
+          fOption = kEventWise;
+        }
+        if(newValues == "root") {
+          fFormat = kRoot;
+          fOption = kEventWise;
+        }
+        if(newValues == "hdf5") {
+          fFormat = kHdf5;
+          fOption = kStepWise;
+        }
+      }
+      if(command == fOutputOptionCmd) {
+        if(newValues == "stepwise") fOption = kStepWise;
+        if(newValues == "eventwise") fOption = kEventWise;
+      }
+      if(command == fRecordAllStepsCmd) {
+        fRecordAllSteps = fRecordAllStepsCmd->GetNewBoolValue(newValues);
       }
     }
 
@@ -155,29 +197,80 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fIRep.clear();
     }
 
+    void WriteRow(G4VAnalysisManager* man) {
+      man->FillNtupleIColumn(0, fNEvents);
+      man->FillNtupleIColumn(1, fEventNumber);
+      int row = 2;
+      if(fOption == kStepWise) {
+        size_t i = fPID.size()-1;
+        man->FillNtupleIColumn(row++, fPID[i]);
+        man->FillNtupleIColumn(row++, fTrackID[i]);
+        man->FillNtupleIColumn(row++, fParentID[i]);
+        man->FillNtupleIColumn(row++, fStepNumber[i]);
+        man->FillNtupleDColumn(row++, fKE[i]);
+        man->FillNtupleDColumn(row++, fEDep[i]);
+        man->FillNtupleDColumn(row++, fX[i]);
+        man->FillNtupleDColumn(row++, fY[i]);
+        man->FillNtupleDColumn(row++, fZ[i]);
+        man->FillNtupleDColumn(row++, fLX[i]);
+        man->FillNtupleDColumn(row++, fLY[i]);
+        man->FillNtupleDColumn(row++, fLZ[i]);
+        man->FillNtupleDColumn(row++, fT[i]);
+        man->FillNtupleIColumn(row++, fVolID[i]);
+        man->FillNtupleIColumn(row++, fIRep[i]);
+      }
+      // for event-wise, manager copies data from vectors over
+      // automatically in the next line
+      man->AddNtupleRow();
+    }
+
     void UserSteppingAction(const G4Step *step) {
       G4VAnalysisManager* man = GetAnalysisManager();
 
       if(!man->IsOpenFile()) {
         // need to create the ntuple before opening the file in order to avoid
         // writing error in csv, xml, and hdf5
-        man->CreateNtuple("g4stree", "steps data");
+        man->CreateNtuple("g4sntuple", "steps data");
         man->CreateNtupleIColumn("nEvents");
-        man->CreateNtupleIColumn("pid", fPID);
-        man->CreateNtupleIColumn("trackID", fTrackID);
-        man->CreateNtupleIColumn("parentID", fParentID);
-        man->CreateNtupleIColumn("step", fStepNumber);
-        man->CreateNtupleDColumn("KE", fKE);
-        man->CreateNtupleDColumn("Edep", fEDep);
-        man->CreateNtupleDColumn("x", fX);
-        man->CreateNtupleDColumn("y", fY);
-        man->CreateNtupleDColumn("z", fZ);
-        man->CreateNtupleDColumn("lx", fLX);
-        man->CreateNtupleDColumn("ly", fLY);
-        man->CreateNtupleDColumn("lz", fLZ);
-        man->CreateNtupleDColumn("t", fT);
-        man->CreateNtupleIColumn("volID", fVolID);
-        man->CreateNtupleIColumn("iRep", fIRep);
+        man->CreateNtupleIColumn("event");
+        if(fOption == kEventWise) {
+          man->CreateNtupleIColumn("pid", fPID);
+          man->CreateNtupleIColumn("trackID", fTrackID);
+          man->CreateNtupleIColumn("parentID", fParentID);
+          man->CreateNtupleIColumn("step", fStepNumber);
+          man->CreateNtupleDColumn("KE", fKE);
+          man->CreateNtupleDColumn("Edep", fEDep);
+          man->CreateNtupleDColumn("x", fX);
+          man->CreateNtupleDColumn("y", fY);
+          man->CreateNtupleDColumn("z", fZ);
+          man->CreateNtupleDColumn("lx", fLX);
+          man->CreateNtupleDColumn("ly", fLY);
+          man->CreateNtupleDColumn("lz", fLZ);
+          man->CreateNtupleDColumn("t", fT);
+          man->CreateNtupleIColumn("volID", fVolID);
+          man->CreateNtupleIColumn("iRep", fIRep);
+        }
+        else if(fOption == kStepWise) {
+          man->CreateNtupleIColumn("pid");
+          man->CreateNtupleIColumn("trackID");
+          man->CreateNtupleIColumn("parentID");
+          man->CreateNtupleIColumn("step");
+          man->CreateNtupleDColumn("KE");
+          man->CreateNtupleDColumn("Edep");
+          man->CreateNtupleDColumn("x");
+          man->CreateNtupleDColumn("y");
+          man->CreateNtupleDColumn("z");
+          man->CreateNtupleDColumn("lx");
+          man->CreateNtupleDColumn("ly");
+          man->CreateNtupleDColumn("lz");
+          man->CreateNtupleDColumn("t");
+          man->CreateNtupleIColumn("volID");
+          man->CreateNtupleIColumn("iRep");
+        }
+        else {
+          cout << "ERROR: Unknown output option " << fOption << endl;
+          return;
+        }
         man->FinishNtuple();
 
         // look for filename set by macro command: /analysis/setFileName [name]
@@ -190,18 +283,18 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fVolIDMap.clear();
       }
       else {
-        G4int eventID = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
-        static G4int lastEventID = eventID;
-        if(eventID != lastEventID) {
-          if(fPID.size()>0) {
-            man->FillNtupleIColumn(0, fNEvents);
-            man->AddNtupleRow();
-          }
+        fEventNumber = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
+        static G4int lastEventID = fEventNumber;
+        if(fEventNumber != lastEventID) {
+          if(fOption == kEventWise && fPID.size()>0) WriteRow(man);
           ResetVars();
-          lastEventID = eventID;
+          lastEventID = fEventNumber;
         }
       }
 
+      // post-step point will always work: only need to use the pre-step point
+      // on the first step, for which the pre-step volume is always the same as
+      // the post-step volume
       G4VPhysicalVolume* vpv = step->GetPostStepPoint()->GetPhysicalVolume();
       G4int id = fVolIDMap[vpv];
       if(id == 0 && fPatterns.size() > 0) {
@@ -212,12 +305,13 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
             break;
           }
         }
-        if(id == 0) id = -1;
+        if(id == 0 && !fRecordAllSteps) id = -1;
         fVolIDMap[vpv] = id;
       }
 
-      // record primary event info on first step
-      if(fVolID.size() == 0) {
+      // always record primary event info from pre-step of first step
+      // if recording all steps, do this block to record prestep info
+      if(fVolID.size() == 0 || (fRecordAllSteps && step->GetTrack()->GetCurrentStepNumber() == 1)) {
         fVolID.push_back(id == -1 ? 0 : id);
         fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
         fTrackID.push_back(step->GetTrack()->GetTrackID());
@@ -236,9 +330,14 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fLZ.push_back(lPos.z());
         fT.push_back(step->GetPreStepPoint()->GetGlobalTime());
         fIRep.push_back(vol->GetReplicaNumber());
+
+        if(fOption == kStepWise) WriteRow(man);
       }
+
+      // If not in a sensitive volume, get out of here.
       if(id == -1) return; 
 
+      // Now record post-step info
       fVolID.push_back(id);
       fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
       fTrackID.push_back(step->GetTrack()->GetTrackID());
@@ -257,6 +356,8 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fLZ.push_back(lPos.z());
       fT.push_back(step->GetPostStepPoint()->GetGlobalTime());
       fIRep.push_back(vol->GetReplicaNumber());
+
+      if(fOption == kStepWise) WriteRow(man);
     }
 
 };
