@@ -41,6 +41,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     G4UIcmdWithAString* fOutputFormatCmd;
     G4UIcmdWithAString* fOutputOptionCmd;
     G4UIcmdWithABool* fRecordAllStepsCmd;
+    G4UIcommand* fOutputFileCmd;
 
     enum EFormat { kCsv, kXml, kRoot, kHdf5 };
     EFormat fFormat;
@@ -48,12 +49,13 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     EOption fOption;
     bool fRecordAllSteps;
 
+    string fOutputFileName;
     vector<regex> fPatterns;
     vector<int> fPatternIDs;
- 
+
     G4int fNEvents;
     G4int fEventNumber;
-    vector<G4int> fPID; 
+    vector<G4int> fPID;
     vector<G4int> fTrackID;
     vector<G4int> fParentID;
     vector<G4int> fStepNumber;
@@ -73,18 +75,22 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
 
   public:
     G4SimpleSteppingAction() : fNEvents(0), fEventNumber(0) {
-      ResetVars(); 
+      ResetVars();
 
       fVolIDCmd = new G4UIcommand("/g4simple/setVolID", this);
       fVolIDCmd->SetParameter(new G4UIparameter("pattern", 's', false));
       fVolIDCmd->SetParameter(new G4UIparameter("id", 'i', false));
       fVolIDCmd->SetGuidance("Volumes with name matching [pattern] will be given volume ID [id]");
 
+      fOutputFileCmd = new G4UIcommand("/analysis/setFileName", this);
+      fOutputFileCmd->SetParameter(new G4UIparameter("fname", 's', false));
+      fOutputFileCmd->SetGuidance("Set the output file name");
+
       fOutputFormatCmd = new G4UIcmdWithAString("/g4simple/setOutputFormat", this);
       string candidates = "csv xml root";
-#ifdef GEANT4_USE_HDF5
+	  #ifdef GEANT4_USE_HDF5
       candidates += " hdf5";
-#endif
+	  #endif
       fOutputFormatCmd->SetCandidates(candidates.c_str());
       fOutputFormatCmd->SetGuidance("Set output format");
       fFormat = kCsv;
@@ -109,20 +115,20 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       if(fFormat == kXml) return G4Xml::G4AnalysisManager::Instance();
       if(fFormat == kRoot) return G4Root::G4AnalysisManager::Instance();
       if(fFormat == kHdf5) {
-#ifdef GEANT4_USE_HDF5
+	  #ifdef GEANT4_USE_HDF5
         return G4Hdf5::G4AnalysisManager::Instance();
-#else
+	  #else
         cout << "Warning: You need to compile Geant4 with cmake flag "
              << "-DGEANT4_USE_HDF5 in order to generate the HDF5 output format.  "
              << "Reverting to ROOT." << endl;
         return G4Root::G4AnalysisManager::Instance();
-#endif
+	  #endif
       }
       cout << "Error: invalid format " << fFormat << endl;
       return NULL;
     }
 
-    ~G4SimpleSteppingAction() { 
+    ~G4SimpleSteppingAction() {
       G4VAnalysisManager* man = GetAnalysisManager();
       if(man->IsOpenFile()) {
         if(fOption == kEventWise && fPID.size()>0) WriteRow(man);
@@ -134,7 +140,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       delete fOutputFormatCmd;
       delete fOutputOptionCmd;
       delete fRecordAllStepsCmd;
-    } 
+    }
 
     void SetNewValue(G4UIcommand *command, G4String newValues) {
       if(command == fVolIDCmd) {
@@ -176,6 +182,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       }
       if(command == fRecordAllStepsCmd) {
         fRecordAllSteps = fRecordAllStepsCmd->GetNewBoolValue(newValues);
+      }
+      if(command == fOutputFileCmd) {
+      	fOutputFileName = newValues;
       }
     }
 
@@ -272,25 +281,27 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
           return;
         }
         man->FinishNtuple();
+    	}
 
         // look for filename set by macro command: /analysis/setFileName [name]
-	if(man->GetFileName() == "") man->SetFileName("g4simpleout");
+		if(man->GetFileName() == "") {
+			man->SetFileName(fOutputFileName);
         cout << "Opening file " << man->GetFileName() << endl;
         man->OpenFile();
 
         ResetVars();
         fNEvents = G4RunManager::GetRunManager()->GetCurrentRun()->GetNumberOfEventToBeProcessed();
         fVolIDMap.clear();
-      }
-      else {
-        fEventNumber = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
-        static G4int lastEventID = fEventNumber;
-        if(fEventNumber != lastEventID) {
-          if(fOption == kEventWise && fPID.size()>0) WriteRow(man);
-          ResetVars();
-          lastEventID = fEventNumber;
-        }
-      }
+    	}
+    	else {
+      	fEventNumber = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
+  		static G4int lastEventID = fEventNumber;
+      	if(fEventNumber != lastEventID) {
+        	if(fOption == kEventWise && fPID.size()>0) WriteRow(man);
+        	ResetVars();
+        	lastEventID = fEventNumber;
+      	}
+  		}
 
       // post-step point will always work: only need to use the pre-step point
       // on the first step, for which the pre-step volume is always the same as
@@ -335,7 +346,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       }
 
       // If not in a sensitive volume, get out of here.
-      if(id == -1) return; 
+      if(id == -1) return;
 
       // Don't write Edep=0 steps (unless desired)
       if(!fRecordAllSteps && step->GetTotalEnergyDeposit() == 0) return;
@@ -369,14 +380,14 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
 class G4SimplePrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 {
   public:
-    void GeneratePrimaries(G4Event* event) { fParticleGun.GeneratePrimaryVertex(event); } 
+    void GeneratePrimaries(G4Event* event) { fParticleGun.GeneratePrimaryVertex(event); }
   private:
     G4GeneralParticleSource fParticleGun;
 };
 
 
 class G4SimpleDetectorConstruction : public G4VUserDetectorConstruction
-{ 
+{
   public:
     G4SimpleDetectorConstruction(G4VPhysicalVolume *world = 0) { fWorld = world; }
     virtual G4VPhysicalVolume* Construct() { return fWorld; }
@@ -459,8 +470,8 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
         devrandom.read((char*)(&seed), sizeof(long));
 
         // Negative seeds give nasty sequences for some engines. For example,
-        // CLHEP's JamesRandom.cc contains a specific check for this. Might 
-        // as well make all seeds positive; randomness is not affected (one 
+        // CLHEP's JamesRandom.cc contains a specific check for this. Might
+        // as well make all seeds positive; randomness is not affected (one
         // bit of randomness goes unused).
         if (seed < 0) seed = -seed;
 
@@ -503,4 +514,3 @@ int main(int argc, char** argv)
   delete runManager;
   return 0;
 }
-
