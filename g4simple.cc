@@ -169,6 +169,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
           fFormat = kHdf5;
           fOption = kStepWise;
         }
+        GetAnalysisManager(); // call once to make all of the /analysis commands available
       }
       if(command == fOutputOptionCmd) {
         if(newValues == "stepwise") fOption = kStepWise;
@@ -316,7 +317,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
         fTrackID.push_back(step->GetTrack()->GetTrackID());
         fParentID.push_back(step->GetTrack()->GetParentID());
-        fStepNumber.push_back(step->GetTrack()->GetCurrentStepNumber());
+        fStepNumber.push_back(0); // call this step "0"
         fKE.push_back(step->GetPreStepPoint()->GetKineticEnergy());
         fEDep.push_back(0);
         G4ThreeVector pos = step->GetPreStepPoint()->GetPosition();
