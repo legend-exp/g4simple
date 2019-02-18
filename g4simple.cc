@@ -283,14 +283,13 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fNEvents = G4RunManager::GetRunManager()->GetCurrentRun()->GetNumberOfEventToBeProcessed();
         fVolIDMap.clear();
       }
-      else {
-        fEventNumber = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
-        static G4int lastEventID = fEventNumber;
-        if(fEventNumber != lastEventID) {
-          if(fOption == kEventWise && fPID.size()>0) WriteRow(man);
-          ResetVars();
-          lastEventID = fEventNumber;
-        }
+
+      fEventNumber = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
+      static G4int lastEventID = fEventNumber;
+      if(fEventNumber != lastEventID) {
+        if(fOption == kEventWise && fPID.size()>0) WriteRow(man);
+        ResetVars();
+        lastEventID = fEventNumber;
       }
 
       // post-step point will always work: only need to use the pre-step point
