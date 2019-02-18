@@ -3,14 +3,18 @@ Perhaps the simplest fully-featured G4 application.
 
 Based on one-file simulation by Jason Detwiler.
 
-Physics List: uses Geant4's named physics lists, set them using macro commands 
-(see example run.mac)
+Physics List: uses Geant4's 
+[named physics lists](https://geant4.web.cern.ch/node/155), 
+set them using macro commands (see example run.mac)
 
-Generator: uses Geant4's GPS. Set it up using macro commands (see example
-run.mac).
+Generator: uses Geant4's 
+[GPS](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/GettingStarted/generalParticleSource.html). 
+Set it up using macro commands (see example run.mac).
 
-Geometry: uses g4gdml (see example run.mac). Also plan to add a
-G4tgrLineProcessor-based geometry input scheme.
+Geometry: uses 
+[GDML](http://lcgapp.cern.ch/project/simu/framework/GDML/doc/GDMLmanual.pdf) 
+(see example run.mac). Also plan to add a G4tgrLineProcessor-based geometry
+input scheme.
 
 Output: uses Geant4's analysis manager (root, hdf5, xml, csv), with several
 configurable options for output format, sensitive volumes, etc (see example
