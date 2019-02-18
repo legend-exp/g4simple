@@ -1,7 +1,9 @@
 .*.swp
+.DS_Store
 g4simpleout.root
 Example/g4simpleout.hdf5
+Example/g4simpleout_nt_g4sntuple.csv
 Example/hdf5PostProc/processed.hdf5
 Example/rootPostProc/postprocroot
 Example/rootPostProc/processed.root
-
+Example/g4RayTracer.viewer-0_0000.jpeg
