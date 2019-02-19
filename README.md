@@ -18,7 +18,9 @@ input scheme.
 
 Output: uses Geant4's analysis manager (root, hdf5, xml, csv), with several
 configurable options for output format, sensitive volumes, etc (see example
-run.mac).
+run.mac). Records event/track/step numbers, 
+[PIDs](http://pdg.lbl.gov/2018/reviews/rpp2018-rev-monte-carlo-numbering.pdf),
+positions, energies, etc.
 
 Visualization: uses avaialable options in your G4 build (see example vis.mac).
 
