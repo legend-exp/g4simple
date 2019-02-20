@@ -13,8 +13,9 @@ Set it up using macro commands (see example run.mac).
 
 Geometry: uses 
 [GDML](http://lcgapp.cern.ch/project/simu/framework/GDML/doc/GDMLmanual.pdf) 
-(see example run.mac). Also plan to add a G4tgrLineProcessor-based geometry
-input scheme.
+(see example run.mac). Can use materials from Geant4's
+[NIST Material Database](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Appendix/materialNames.html)
+Also plan to add a G4tgrLineProcessor-based geometry input scheme.
 
 Output: uses Geant4's analysis manager (root, hdf5, xml, csv), with several
 configurable options for output format, sensitive volumes, etc (see example
