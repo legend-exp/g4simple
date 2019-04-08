@@ -6,9 +6,9 @@ Based on one-file simulation by Jason Detwiler.
 Installation:
 Compile geant4 with GDML support (and optionally HDF5 support), then do:
 
-```source $G4INSTALL/geant4make.sh```
+```source (g4install_path)/share/(g4version)/geant4make/geant4make.sh```
 
-(or `source $G4INSTALL/geant4make.csh`)
+(or `source (g4install_path)/share/(g4version)/geant4make/geant4make.csh`)
 
 ```make```
 
