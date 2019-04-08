@@ -3,6 +3,12 @@ Perhaps the simplest fully-featured G4 application.
 
 Based on one-file simulation by Jason Detwiler.
 
+Installation:
+Compile geant4 with GDML support (and optionally HDF5 support), then do:
+source $G4INSTALL/geant4make.sh
+(or source $G4INSTALL/geant4make.csh)
+make
+
 Physics List: uses Geant4's 
 [named physics lists](https://geant4.web.cern.ch/node/155), 
 set them using macro commands (see example run.mac)
