@@ -65,6 +65,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     vector<G4double> fLX;
     vector<G4double> fLY;
     vector<G4double> fLZ;
+    vector<G4double> fPdX;
+    vector<G4double> fPdY;
+    vector<G4double> fPdZ;
     vector<G4double> fT;
     vector<G4int> fVolID;
     vector<G4int> fIRep;
@@ -193,6 +196,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fLX.clear();
       fLY.clear();
       fLZ.clear();
+      fPdX.clear();
+      fPdY.clear();
+      fPdZ.clear();
       fT.clear();
       fVolID.clear();
       fIRep.clear();
@@ -216,6 +222,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         man->FillNtupleDColumn(row++, fLX[i]);
         man->FillNtupleDColumn(row++, fLY[i]);
         man->FillNtupleDColumn(row++, fLZ[i]);
+        man->FillNtupleDColumn(row++, fPdX[i]);
+        man->FillNtupleDColumn(row++, fPdY[i]);
+        man->FillNtupleDColumn(row++, fPdZ[i]);
         man->FillNtupleDColumn(row++, fT[i]);
         man->FillNtupleIColumn(row++, fVolID[i]);
         man->FillNtupleIColumn(row++, fIRep[i]);
@@ -247,6 +256,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
           man->CreateNtupleDColumn("lx", fLX);
           man->CreateNtupleDColumn("ly", fLY);
           man->CreateNtupleDColumn("lz", fLZ);
+          man->CreateNtupleDColumn("pdx", fPdX);
+          man->CreateNtupleDColumn("pdy", fPdY);
+          man->CreateNtupleDColumn("pdz", fPdZ);
           man->CreateNtupleDColumn("t", fT);
           man->CreateNtupleIColumn("volID", fVolID);
           man->CreateNtupleIColumn("iRep", fIRep);
@@ -264,6 +276,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
           man->CreateNtupleDColumn("lx");
           man->CreateNtupleDColumn("ly");
           man->CreateNtupleDColumn("lz");
+          man->CreateNtupleDColumn("pdx");
+          man->CreateNtupleDColumn("pdy");
+          man->CreateNtupleDColumn("pdz");
           man->CreateNtupleDColumn("t");
           man->CreateNtupleIColumn("volID");
           man->CreateNtupleIColumn("iRep");
@@ -320,14 +335,18 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fKE.push_back(step->GetPreStepPoint()->GetKineticEnergy());
         fEDep.push_back(0);
         G4ThreeVector pos = step->GetPreStepPoint()->GetPosition();
-        G4TouchableHandle vol = step->GetPreStepPoint()->GetTouchableHandle();
-        G4ThreeVector lPos = vol->GetHistory()->GetTopTransform().TransformPoint(pos);
         fX.push_back(pos.x());
         fY.push_back(pos.y());
         fZ.push_back(pos.z());
+        G4TouchableHandle vol = step->GetPreStepPoint()->GetTouchableHandle();
+        G4ThreeVector lPos = vol->GetHistory()->GetTopTransform().TransformPoint(pos);
         fLX.push_back(lPos.x());
         fLY.push_back(lPos.y());
         fLZ.push_back(lPos.z());
+        G4ThreeVector momDir = step->GetPreStepPoint()->GetMomentumDirection();
+        fPdX.push_back(momDir.x());
+        fPdY.push_back(momDir.y());
+        fPdZ.push_back(momDir.z());
         fT.push_back(step->GetPreStepPoint()->GetGlobalTime());
         fIRep.push_back(vol->GetReplicaNumber());
 
@@ -349,14 +368,18 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fKE.push_back(step->GetTrack()->GetKineticEnergy());
       fEDep.push_back(step->GetTotalEnergyDeposit());
       G4ThreeVector pos = step->GetPostStepPoint()->GetPosition();
-      G4TouchableHandle vol = step->GetPostStepPoint()->GetTouchableHandle();
-      G4ThreeVector lPos = vol->GetHistory()->GetTopTransform().TransformPoint(pos);
       fX.push_back(pos.x());
       fY.push_back(pos.y());
       fZ.push_back(pos.z());
+      G4TouchableHandle vol = step->GetPostStepPoint()->GetTouchableHandle();
+      G4ThreeVector lPos = vol->GetHistory()->GetTopTransform().TransformPoint(pos);
       fLX.push_back(lPos.x());
       fLY.push_back(lPos.y());
       fLZ.push_back(lPos.z());
+      G4ThreeVector momDir = step->GetPostStepPoint()->GetMomentumDirection();
+      fPdX.push_back(momDir.x());
+      fPdY.push_back(momDir.y());
+      fPdZ.push_back(momDir.z());
       fT.push_back(step->GetPostStepPoint()->GetGlobalTime());
       fIRep.push_back(vol->GetReplicaNumber());
 
