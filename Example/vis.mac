@@ -3,8 +3,9 @@
 
 # as an example, use assembly.gdml from 
 # geant4/examples/extended/persistency/gdml/G01
-/control/getEnv G4INSTALL
-/g4simple/setDetectorGDML {G4INSTALL}/../examples/extended/persistency/gdml/G01/assembly.gdml
+#/control/getEnv G4INSTALL
+#/g4simple/setDetectorGDML {G4INSTALL}/../examples/extended/persistency/gdml/G01/assembly.gdml
+/g4simple/setDetectorGDML geCounter.gdml
 
 /run/initialize
 
@@ -12,14 +13,23 @@
 #/vis/open OGLSXm
 /vis/open RayTracerX
 
+# Set colors
+# /vis/geometry/set/colour volname depth red green blue opacity
+/vis/geometry/set/colour shield 0 0 0 0 0.1
+/vis/geometry/set/colour cavity 0 1 1 1 0.3
+/vis/geometry/set/colour geDetector 0 0.2 0.2 0.2 1
+/vis/geometry/set/colour source 0 1 0 0 1
+
+
 # Camera setting
+/vis/viewer/set/upVector 0 0 1
 /vis/viewer/set/style surface
-/vis/viewer/set/viewpointThetaPhi 45 45
+/vis/viewer/set/viewpointThetaPhi 70 30
 /vis/viewer/set/background white 0.
-#/vis/viewer/set/lightsThetaPhi 30 30
+/vis/viewer/set/lightsThetaPhi 30 30
 /vis/viewer/set/lightsVector 0 0 1
-/vis/viewer/zoom 1.2
-/vis/viewer/pan 0.5 0.3
+/vis/viewer/zoom 4
+#/vis/viewer/pan 0.5 0.3
 
 # Camera setting
 #/vis/drawVolume target

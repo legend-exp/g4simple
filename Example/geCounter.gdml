@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<gdml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:noNamespaceSchemaLocation="http://service-spi.web.cern.ch/service-spi/app/releases/GDML/schema/gdml.xsd">
+
+  <define>
+    <quantity name="worldR" type="length" value="100" unit="m" />
+
+    <quantity name="cavityS" type="length" value="0.2" unit="m" />
+    <quantity name="shieldS" type="length" value="1" unit="m" />
+
+    <quantity name="geR" type="length" value="3.5" unit="cm" />
+    <quantity name="geH" type="length" value="7" unit="cm" />
+
+    <quantity name="sourceR" type="length" value="2" unit="mm" />
+    <quantity name="sourceH" type="length" value="2" unit="mm" />
+    <position name="sourcePos" unit="cm" x="0" y="0" z="5"/>
+
+    <position name="origin" x="0" y="0" z="0"/>
+    <rotation name="noRotation" z="0"/>
+  </define>
+
+  <materials/>
+
+  <solids>
+    <orb name="worldSphere" r="worldR"/>
+    <box name="shieldBox" x="shieldS" y="shieldS" z="shieldS"/>
+    <box name="cavityBox" x="cavityS" y="cavityS" z="cavityS"/>
+    <tube name="geCyl" rmax="geR" z="geH" deltaphi="2*pi"/>
+    <tube name="sourceCyl" rmax="sourceR" z="sourceH" deltaphi="2*pi"/>
+  </solids>
+
+
+  <structure>
+    <volume name="geDetector">
+      <materialref ref="G4_Ge"/>
+      <solidref ref="geCyl"/>
+    </volume>
+
+    <volume name="source">
+      <materialref ref="G4_STAINLESS-STEEL"/>
+      <solidref ref="sourceCyl"/>
+    </volume>
+
+    <volume name="cavity">
+      <materialref ref="G4_AIR"/>
+      <solidref ref="cavityBox"/>
+      <physvol>
+        <volumeref ref="geDetector"/>
+        <positionref ref="origin"/>
+        <rotationref ref="noRotation"/>
+      </physvol>
+      <physvol>
+        <volumeref ref="source"/>
+        <positionref ref="sourcePos"/>
+        <rotationref ref="noRotation"/>
+      </physvol>
+    </volume>
+
+    <volume name="shield">
+      <materialref ref="G4_Pb"/>
+      <solidref ref="shieldBox"/>
+      <physvol>
+        <volumeref ref="cavity"/>
+        <positionref ref="origin"/>
+        <rotationref ref="noRotation"/>
+      </physvol>
+    </volume>
+
+    <volume name="world">
+      <materialref ref="G4_Galactic"/>
+      <solidref ref="worldSphere"/>
+      <physvol>
+        <volumeref ref="shield"/>
+        <positionref ref="origin"/>
+        <rotationref ref="noRotation"/>
+      </physvol>
+    </volume>
+  </structure>
+
+  <setup name="Default" version="1.0">
+    <world ref="world"/>
+  </setup>
+
+
+</gdml>
