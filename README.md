@@ -37,7 +37,5 @@ Visualization: uses avaialable options in your G4 build (see example vis.mac).
 Postprocessing: you will want to postprocess the output to apply the detector
 response. See example code that runs on the output of run.mac.
 
-Can be built with the supplied makefile for typical use.
-CMakeLists.txt file provided for installing with cmake. 
 
 See similar project by Jing Liu at https://github.com/jintonic/gears
