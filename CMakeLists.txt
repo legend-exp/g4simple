@@ -1,5 +1,5 @@
 # $Id: CMakeLists.txt 2018-11-05 D.J. Salvat
-# for building with cmake. For example:
+# for building with cmake. Based upon geant4 basic/B1 example. To install:
 # $ mkdir g4simple-build
 # $ cd g4simple-build
 # $ cmake -DCMAKE_INSTALL_PREFIX=/path/to/desired/install/ /path/to/g4simple
@@ -27,10 +27,11 @@ endif()
 # Setup include directory for this project
 #
 include(${Geant4_USE_FILE})
+
 #----------------------------------------------------------------------------
 # Locate sources and headers for this project
 # NB: headers are included so they will show up in IDEs
-# In this particular case we have no headers,
+# DJS: In this particular case we have no headers,
 # but I leave it here for generality
 file(GLOB sources ${PROJECT_SOURCE_DIR}/*.cc)
 
