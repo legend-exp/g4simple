@@ -312,8 +312,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         string name = (vpv == NULL) ? "NULL" : vpv->GetName();
         for(auto& pp : fPatternPairs) {
           if(regex_match(name, pp.first)) {
+            int id_new = stoi(regex_replace(name,pp.first,pp.second));
             if (id_new == 0 || id_new == -1) {
-              cout << "Pattern " << pattern << ": Can't use ID = " << id << endl;
+              cout << "Volume " << name << ": Can't use ID = " << id << endl;
             } 
             else {
               id = id_new;
