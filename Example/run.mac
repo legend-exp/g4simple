@@ -29,9 +29,9 @@
 # via the setVolID command
 # Example setting a full volume name (exact match):
 /g4simple/setVolID geDetector_PV 1
-# Example using a regular expression to match multiple volumes (in this case
-# they have different replication numbers):
-#/g4simple/setVolID .*Detector.* 1
+# Example using a regular expression to match multiple volumes, extract an
+# integer from the name, and set it as the volID
+#/g4simple/setVolID .*Detector([0-9]*).* $1
 # To get all steps in all volumes, comment out all setVolID commands (removes
 # all volume IDs from output), or uncomment the following line to keep the
 # volume IDs:
