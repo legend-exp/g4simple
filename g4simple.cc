@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <regex>
+#include <utility>
 
 #include "G4RunManager.hh"
 #include "G4Run.hh"
@@ -48,8 +49,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     EOption fOption;
     bool fRecordAllSteps;
 
-    vector<regex> fPatterns;
-    vector<int> fPatternIDs;
+    vector< pair<regex,string> > fPatternPairs;
  
     G4int fNEvents;
     G4int fEventNumber;
@@ -80,8 +80,10 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
 
       fVolIDCmd = new G4UIcommand("/g4simple/setVolID", this);
       fVolIDCmd->SetParameter(new G4UIparameter("pattern", 's', false));
-      fVolIDCmd->SetParameter(new G4UIparameter("id", 'i', false));
-      fVolIDCmd->SetGuidance("Volumes with name matching [pattern] will be given volume ID [id]");
+      fVolIDCmd->SetParameter(new G4UIparameter("replacement", 's', false));
+      fVolIDCmd->SetGuidance("Volumes with name matching [pattern] will be given volume ID "
+                             "based on the [replacement] rule. Replacement rule must produce an integer."
+                             " Patterns which replace to 0 or -1 are forbidden and will be omitted.");
 
       fOutputFormatCmd = new G4UIcmdWithAString("/g4simple/setOutputFormat", this);
       string candidates = "csv xml root";
@@ -143,15 +145,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       if(command == fVolIDCmd) {
         istringstream iss(newValues);
         string pattern;
-        int id;
-        iss >> pattern >> id;
-        if(id == 0 || id == -1) {
-          cout << "Pattern " << pattern << ": Can't use ID = " << id << endl;
-        }
-        else {
-          fPatterns.push_back(regex(pattern));
-          fPatternIDs.push_back(id);
-        }
+        string replacement;
+        iss >> pattern >> replacement;
+        fPatternPairs.push_back(pair<regex,string>(regex(pattern),replacement));
       }
       if(command == fOutputFormatCmd) {
         // also set recommended options.
@@ -312,11 +308,17 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       // the post-step volume
       G4VPhysicalVolume* vpv = step->GetPostStepPoint()->GetPhysicalVolume();
       G4int id = fVolIDMap[vpv];
-      if(id == 0 && fPatterns.size() > 0) {
+      if(id == 0 && fPatternPairs.size() > 0) {
         string name = (vpv == NULL) ? "NULL" : vpv->GetName();
-        for(size_t i=0; i<fPatterns.size(); i++) {
-          if(regex_match(name, fPatterns[i])) {
-            id = fPatternIDs[i];
+        for(auto& pp : fPatternPairs) {
+          if(regex_match(name, pp.first)) {
+            int id_new = stoi(regex_replace(name,pp.first,pp.second));
+            if (id_new == 0 || id_new == -1) {
+              cout << "Volume " << name << ": Can't use ID = " << id << endl;
+            } 
+            else {
+              id = id_new;
+            }
             break;
           }
         }
