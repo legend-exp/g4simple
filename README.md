@@ -23,7 +23,7 @@ Set it up using macro commands (see example run.mac).
 Geometry: uses 
 [GDML](http://lcgapp.cern.ch/project/simu/framework/GDML/doc/GDMLmanual.pdf) 
 (see example run.mac). Can use materials from Geant4's
-[NIST Material Database](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Appendix/materialNames.html)
+[NIST Material Database](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Appendix/materialNames.html).
 Also supports Geant4's [text file geometry scheme](http://geant4.cern.ch/files/geant4/collaboration/working_groups/geometry/docs/textgeom/textgeom.pdf).
 
 Output: uses Geant4's analysis manager (root, hdf5, xml, csv), with several
