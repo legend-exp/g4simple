@@ -23,6 +23,8 @@
 #include "G4GDMLParser.hh"
 #include "G4TouchableHandle.hh"
 #include "G4PhysicalVolumeStore.hh"
+#include "G4tgbVolumeMgr.hh"
+#include "G4tgrMessenger.hh"
 
 #include "g4root.hh"
 #include "g4xml.hh"
@@ -147,6 +149,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         string pattern;
         string replacement;
         iss >> pattern >> replacement;
+        cout << "in: " << pattern << ' ' << replacement << endl;
         fPatternPairs.push_back(pair<regex,string>(regex(pattern),replacement));
       }
       if(command == fOutputFormatCmd) {
@@ -312,7 +315,10 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         string name = (vpv == NULL) ? "NULL" : vpv->GetName();
         for(auto& pp : fPatternPairs) {
           if(regex_match(name, pp.first)) {
-            int id_new = stoi(regex_replace(name,pp.first,pp.second));
+            string replaced = regex_replace(name,pp.first,pp.second);
+            cout << "match: " << name << ' ' << /*pp.first.str() << ' ' <<*/ pp.second << ' ' << replaced << endl;
+            //int id_new = stoi(regex_replace(name,pp.first,pp.second));
+            int id_new = stoi(replaced);
             if (id_new == 0 || id_new == -1) {
               cout << "Volume " << name << ": Can't use ID = " << id << endl;
             } 
@@ -416,6 +422,7 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
     G4UIdirectory* fDirectory;
     G4UIcmdWithAString* fPhysListCmd;
     G4UIcommand* fDetectorCmd;
+    G4UIcommand* fTGDetectorCmd;
     G4UIcmdWithABool* fRandomSeedCmd;
     G4UIcmdWithAString* fListVolsCmd;
 
@@ -434,6 +441,10 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
       fDetectorCmd->SetParameter(validatePar);
       fDetectorCmd->SetGuidance("Provide GDML filename specifying the detector construction");
 
+      fTGDetectorCmd = new G4UIcommand("/g4simple/setDetectorTGFile", this);
+      fTGDetectorCmd->SetParameter(new G4UIparameter("filename", 's', false));
+      fTGDetectorCmd->SetGuidance("Provide text filename specifying the detector construction");
+
       fRandomSeedCmd = new G4UIcmdWithABool("/g4simple/setRandomSeed", this);
       fRandomSeedCmd->SetParameterName("useURandom", true);
       fRandomSeedCmd->SetDefaultValue(false);
@@ -451,6 +462,7 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
       delete fDirectory;
       delete fPhysListCmd;
       delete fDetectorCmd;
+      delete fTGDetectorCmd;
       delete fRandomSeedCmd;
       delete fListVolsCmd;
     }
@@ -469,6 +481,12 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
         G4GDMLParser parser;
         parser.Read(filename, validate == "1" || validate == "true" || validate == "True");
         SetUserInitialization(new G4SimpleDetectorConstruction(parser.GetWorldVolume()));
+      }
+      else if(command == fTGDetectorCmd) {
+        new G4tgrMessenger;
+        G4tgbVolumeMgr* volmgr = G4tgbVolumeMgr::GetInstance();
+        volmgr->AddTextFile(newValues);
+        SetUserInitialization(new G4SimpleDetectorConstruction(volmgr->ReadAndConstructDetector()));
       }
       else if(command == fRandomSeedCmd) {
         bool useURandom = fRandomSeedCmd->GetNewBoolValue(newValues);
