@@ -38,4 +38,4 @@ Postprocessing: you will want to postprocess the output to apply the detector
 response. See example code that runs on the output of run.mac.
 
 
-See similar project by Jing Liu at https://github.com/jintonic/gears
+See similar project by Jing Liu at https://github.com/jintonic/gears .
