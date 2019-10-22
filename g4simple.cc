@@ -520,7 +520,8 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
         cout << ":" << endl;
         for(size_t i=0; i<volumeStore->size(); i++) {
           string name = volumeStore->at(i)->GetName();
-          if(!doMatching || regex_match(name, pattern)) cout << name << endl;
+	  int iRep = volumeStore->at(i)->GetCopyNo();
+          if(!doMatching || regex_match(name, pattern)) cout << name << ' ' << iRep << endl;
         }
       }
     }
