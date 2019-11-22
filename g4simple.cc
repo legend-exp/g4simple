@@ -149,7 +149,6 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         string pattern;
         string replacement;
         iss >> pattern >> replacement;
-        cout << "in: " << pattern << ' ' << replacement << endl;
         fPatternPairs.push_back(pair<regex,string>(regex(pattern),replacement));
       }
       if(command == fOutputFormatCmd) {
@@ -316,11 +315,9 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         for(auto& pp : fPatternPairs) {
           if(regex_match(name, pp.first)) {
             string replaced = regex_replace(name,pp.first,pp.second);
-            cout << "match: " << name << ' ' << /*pp.first.str() << ' ' <<*/ pp.second << ' ' << replaced << endl;
-            //int id_new = stoi(regex_replace(name,pp.first,pp.second));
             int id_new = stoi(replaced);
             if (id_new == 0 || id_new == -1) {
-              cout << "Volume " << name << ": Can't use ID = " << id << endl;
+              cout << "Volume " << name << ": Can't use ID = " << id_new << endl;
             } 
             else {
               id = id_new;
