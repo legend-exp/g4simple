@@ -315,6 +315,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         for(auto& pp : fPatternPairs) {
           if(regex_match(name, pp.first)) {
             string replaced = regex_replace(name,pp.first,pp.second);
+	    cout << "Setting ID for " << name << " to " << replaced << endl;
             int id_new = stoi(replaced);
             if (id_new == 0 || id_new == -1) {
               cout << "Volume " << name << ": Can't use ID = " << id_new << endl;
