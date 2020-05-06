@@ -38,5 +38,27 @@ Visualization: uses avaialable options in your G4 build (see example vis.mac).
 Postprocessing: you will want to postprocess the output to apply the detector
 response. See example code that runs on the output of run.mac.
 
+Ouput parameters:
+* int nEvents: number of events run in the simulation
+* int event: event number of the recorded step
+* int pid: particle ID of the particle making the step
+* int trackID: track ID for the recorded step
+* int parentID: parent track ID of the track being recorded
+* int step: current step number
+* double KE: kinetic energy at the start (step=0) or end (step>0) of the step
+* double Edep: energy deposited along the step
+* double x: global x coordinate of the pre- (step=0) or post- (step>0) step position
+* double y: global y coordinate of the pre- (step=0) or post- (step>0) step position
+* double z: global z coordinate of the pre- (step=0) or post- (step>0) step position
+* double lx: local x coordinate of the pre- (step=0) or post- (step>0) step position
+* double ly: local y coordinate of the pre- (step=0) or post- (step>0) step position
+* double lz: local z coordinate of the pre- (step=0) or post- (step>0) step position
+* double pdx: global x component of the pre- (step=0) or post- (step>0) step momentum
+* double pdy: global x component of the pre- (step=0) or post- (step>0) step momentum
+* double pdz: global x component of the pre- (step=0) or post- (step>0) step momentum
+* double t: global time of the pre- (step=0) or post- (step>0) step point
+* int volID: the ID of the volume being traversed (user-defined) (see example run.mac)
+* int iRep: the replica number of the volume being traversed
+
 
 See similar project by Jing Liu at https://github.com/jintonic/gears .
