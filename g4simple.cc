@@ -381,18 +381,25 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         PushData(id, step, usePreStep=true);
       }
 
-      // Record post-step if in a sensitive volume and Edep > 0
+      // Record step data if in a sensitive volume and Edep > 0
       if(id != 0 && step->GetTotalEnergyDeposit() > 0) {
+        // Record pre-step data for the first step of a E-depositing track in a
+        // sens vol. Note: if trackID == 1, we already recorded it
+        if(step->GetTrack()->GetCurrentStepNumber() == 1 && step->GetTrack()->GetTrackID() > 1) {
+          PushData(id, step, usePreStep=true);
+        }
+        // Record post-step data for all sens vol steps
         PushData(id, step, usePreStep=false);
       }
 
-      // Record first step point when entering a sensitive volume: it's the
-      // post-step-point of the step where the phys vol pointer changes.
+      // Record the step point when an energy-depositing particle first enters a
+      // sensitive volume: it's the post-step-point of the step where the phys
+      // vol pointer changes.
       // Have to do this last to make sure to write the last step of the
-      // previous volume in case it is also sensitive
+      // previous volume in case it is also sensitive.
       if(step->GetPreStepPoint()->GetPhysicalVolume() != step->GetPostStepPoint()->GetPhysicalVolume()) {
         G4int post_id = GetVolID(step->GetPostStepPoint());
-        if(post_id != 0) {
+        if(post_id != 0 && step->GetTotalEnergyDeposit() > 0) {
           G4bool zeroEdep = true;
           PushData(post_id, step, usePreStep=false, zeroEdep);
         }
