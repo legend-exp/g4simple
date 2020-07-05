@@ -33,6 +33,8 @@ run.mac). Records event/track/step numbers,
 (see also the python package [particle](https://pypi.org/project/Particle/)),
 positions, energies, etc.
 
+Other macro commands: see the example run.mac, or run g4simple and type "help" and choose the g4simple option. Note: more commands become available after setting a physics list.
+
 Visualization: uses avaialable options in your G4 build (see example vis.mac).
 
 Postprocessing: you will want to postprocess the output to apply the detector
@@ -60,5 +62,6 @@ Ouput parameters:
 * int volID: the ID of the volume being traversed (user-defined) (see example run.mac)
 * int iRep: the replica number of the volume being traversed
 
+Note: for every energy-depositing particle traversing a sensitive volume, g4simple will output the step info for the first step point in the volume, marked with Edep = 0.
 
-See similar project by Jing Liu at https://github.com/jintonic/gears .
+See similar project by Jing Liu at https://github.com/jintonic/gears
