@@ -132,7 +132,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     ~G4SimpleSteppingAction() { 
       G4VAnalysisManager* man = GetAnalysisManager();
       if(man->IsOpenFile()) {
-        if(fOption == kEventWise && fPID.size()>0) WriteRow(man);
+        if(fOption == kEventWise && fPID.size()>0) WriteRow();
         man->Write();
         man->CloseFile();
       }
@@ -202,7 +202,61 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fIRep.clear();
     }
 
-    void WriteRow(G4VAnalysisManager* man) {
+    G4int GetVolID(G4StepPoint* stepPoint) {
+      G4VPhysicalVolume* vpv = stepPoint->GetPhysicalVolume();
+      G4int id = fVolIDMap[vpv];
+      if(id == 0 && fPatternPairs.size() > 0) {
+        string name = (vpv == NULL) ? "NULL" : vpv->GetName();
+        for(auto& pp : fPatternPairs) {
+          if(regex_match(name, pp.first)) {
+            string replaced = regex_replace(name,pp.first,pp.second);
+	    cout << "Setting ID for " << name << " to " << replaced << endl;
+            int id_new = stoi(replaced);
+            if (id_new == 0) {
+              cout << "Volume " << name << ": Can't use ID = 0" << endl;
+            } 
+            else id = id_new;
+            break;
+          }
+        }
+        fVolIDMap[vpv] = id;
+      }
+      return id;
+    }
+
+    void PushData(G4int id, const G4Step* step, G4bool usePreStep, G4bool zeroEdep=false) {
+      fVolID.push_back(id);
+      fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
+      fTrackID.push_back(step->GetTrack()->GetTrackID());
+      fParentID.push_back(step->GetTrack()->GetParentID());
+      fStepNumber.push_back(step->GetTrack()->GetCurrentStepNumber() - int(usePreStep));
+      G4StepPoint* stepPoint = NULL;
+      if(usePreStep) stepPoint = step->GetPreStepPoint();
+      else stepPoint = step->GetPostStepPoint();
+      fKE.push_back(stepPoint->GetKineticEnergy());
+      if(usePreStep || zeroEdep) fEDep.push_back(0);
+      else fEDep.push_back(step->GetTotalEnergyDeposit());
+      G4ThreeVector pos = stepPoint->GetPosition();
+      fX.push_back(pos.x());
+      fY.push_back(pos.y());
+      fZ.push_back(pos.z());
+      G4TouchableHandle vol = stepPoint->GetTouchableHandle();
+      G4ThreeVector lPos = vol->GetHistory()->GetTopTransform().TransformPoint(pos);
+      fLX.push_back(lPos.x());
+      fLY.push_back(lPos.y());
+      fLZ.push_back(lPos.z());
+      G4ThreeVector momDir = stepPoint->GetMomentumDirection();
+      fPdX.push_back(momDir.x());
+      fPdY.push_back(momDir.y());
+      fPdZ.push_back(momDir.z());
+      fT.push_back(stepPoint->GetGlobalTime());
+      fIRep.push_back(vol->GetReplicaNumber());
+
+      if(fOption == kStepWise) WriteRow();
+    }
+
+    void WriteRow() {
+      G4VAnalysisManager* man = GetAnalysisManager();
       man->FillNtupleIColumn(0, fNEvents);
       man->FillNtupleIColumn(1, fEventNumber);
       int row = 2;
@@ -233,8 +287,11 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     }
 
     void UserSteppingAction(const G4Step *step) {
+      // This is the main function where we decide what to pull out and write
+      // to an output file
       G4VAnalysisManager* man = GetAnalysisManager();
 
+      // Open up a file if one is not open already
       if(!man->IsOpenFile()) {
         // need to create the ntuple before opening the file in order to avoid
         // writing error in csv, xml, and hdf5
@@ -297,99 +354,49 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         fVolIDMap.clear();
       }
 
+      // Get the event number for recording
       fEventNumber = G4EventManager::GetEventManager()->GetConstCurrentEvent()->GetEventID();
       static G4int lastEventID = fEventNumber;
       if(fEventNumber != lastEventID) {
-        if(fOption == kEventWise && fPID.size()>0) WriteRow(man);
+        if(fOption == kEventWise && fPID.size()>0) WriteRow();
         ResetVars();
         lastEventID = fEventNumber;
       }
 
-      // post-step point will always work: only need to use the pre-step point
-      // on the first step, for which the pre-step volume is always the same as
-      // the post-step volume
-      G4VPhysicalVolume* vpv = step->GetPostStepPoint()->GetPhysicalVolume();
-      G4int id = fVolIDMap[vpv];
-      if(id == 0 && fPatternPairs.size() > 0) {
-        string name = (vpv == NULL) ? "NULL" : vpv->GetName();
-        for(auto& pp : fPatternPairs) {
-          if(regex_match(name, pp.first)) {
-            string replaced = regex_replace(name,pp.first,pp.second);
-	    cout << "Setting ID for " << name << " to " << replaced << endl;
-            int id_new = stoi(replaced);
-            if (id_new == 0 || id_new == -1) {
-              cout << "Volume " << name << ": Can't use ID = " << id_new << endl;
-            } 
-            else {
-              id = id_new;
-            }
-            break;
-          }
+      // Check if we are in a sensitive volume.
+      // A track is "in" the volume of the pre-step point.
+      G4int id = GetVolID(step->GetPreStepPoint());
+
+      G4bool usePreStep = false;
+      if(fRecordAllSteps) {
+        if(step->GetTrack()->GetCurrentStepNumber() == 1) {
+          PushData(id, step, usePreStep=true);
         }
-        if(id == 0 && !fRecordAllSteps) id = -1;
-        fVolIDMap[vpv] = id;
+        PushData(id, step, usePreStep=false);
+        return;
       }
 
-      // always record primary event info from pre-step of first step
-      // if recording all steps, do this block to record prestep info
-      if(fVolID.size() == 0 || (fRecordAllSteps && step->GetTrack()->GetCurrentStepNumber() == 1)) {
-        fVolID.push_back(id == -1 ? 0 : id);
-        fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
-        fTrackID.push_back(step->GetTrack()->GetTrackID());
-        fParentID.push_back(step->GetTrack()->GetParentID());
-        fStepNumber.push_back(0); // call this step "0"
-        fKE.push_back(step->GetPreStepPoint()->GetKineticEnergy());
-        fEDep.push_back(0);
-        G4ThreeVector pos = step->GetPreStepPoint()->GetPosition();
-        fX.push_back(pos.x());
-        fY.push_back(pos.y());
-        fZ.push_back(pos.z());
-        G4TouchableHandle vol = step->GetPreStepPoint()->GetTouchableHandle();
-        G4ThreeVector lPos = vol->GetHistory()->GetTopTransform().TransformPoint(pos);
-        fLX.push_back(lPos.x());
-        fLY.push_back(lPos.y());
-        fLZ.push_back(lPos.z());
-        G4ThreeVector momDir = step->GetPreStepPoint()->GetMomentumDirection();
-        fPdX.push_back(momDir.x());
-        fPdY.push_back(momDir.y());
-        fPdZ.push_back(momDir.z());
-        fT.push_back(step->GetPreStepPoint()->GetGlobalTime());
-        fIRep.push_back(vol->GetReplicaNumber());
-
-        if(fOption == kStepWise) WriteRow(man);
+      // record primary event info from pre-step of first step of first track
+      if(step->GetTrack()->GetTrackID() == 1 && step->GetTrack()->GetCurrentStepNumber() == 1) {
+        PushData(id, step, usePreStep=true);
       }
 
-      // If not in a sensitive volume, get out of here.
-      if(id == -1) return; 
+      // Record post-step if in a sensitive volume and Edep > 0
+      if(id != 0 && step->GetTotalEnergyDeposit() > 0) {
+        PushData(id, step, usePreStep=false);
+      }
 
-      // Don't write Edep=0 steps (unless desired)
-      if(!fRecordAllSteps && step->GetTotalEnergyDeposit() == 0) return;
-
-      // Now record post-step info
-      fVolID.push_back(id);
-      fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
-      fTrackID.push_back(step->GetTrack()->GetTrackID());
-      fParentID.push_back(step->GetTrack()->GetParentID());
-      fStepNumber.push_back(step->GetTrack()->GetCurrentStepNumber());
-      fKE.push_back(step->GetTrack()->GetKineticEnergy());
-      fEDep.push_back(step->GetTotalEnergyDeposit());
-      G4ThreeVector pos = step->GetPostStepPoint()->GetPosition();
-      fX.push_back(pos.x());
-      fY.push_back(pos.y());
-      fZ.push_back(pos.z());
-      G4TouchableHandle vol = step->GetPostStepPoint()->GetTouchableHandle();
-      G4ThreeVector lPos = vol->GetHistory()->GetTopTransform().TransformPoint(pos);
-      fLX.push_back(lPos.x());
-      fLY.push_back(lPos.y());
-      fLZ.push_back(lPos.z());
-      G4ThreeVector momDir = step->GetPostStepPoint()->GetMomentumDirection();
-      fPdX.push_back(momDir.x());
-      fPdY.push_back(momDir.y());
-      fPdZ.push_back(momDir.z());
-      fT.push_back(step->GetPostStepPoint()->GetGlobalTime());
-      fIRep.push_back(vol->GetReplicaNumber());
-
-      if(fOption == kStepWise) WriteRow(man);
+      // Record first step point when entering a sensitive volume: it's the
+      // post-step-point of the step where the phys vol pointer changes.
+      // Have to do this last to make sure to write the last step of the
+      // previous volume in case it is also sensitive
+      if(step->GetPreStepPoint()->GetPhysicalVolume() != step->GetPostStepPoint()->GetPhysicalVolume()) {
+        G4int post_id = GetVolID(step->GetPostStepPoint());
+        if(post_id != 0) {
+          G4bool zeroEdep = true;
+          PushData(post_id, step, usePreStep=false, zeroEdep);
+        }
+      }
     }
 
 };
