@@ -21,7 +21,7 @@ Generator: uses Geant4's
 Set it up using macro commands (see example run.mac).
 
 Geometry: uses 
-[GDML](http://lcgapp.cern.ch/project/simu/framework/GDML/doc/GDMLmanual.pdf) 
+[GDML](http://gdml.web.cern.ch/GDML) 
 (see example run.mac). Can use materials from Geant4's
 [NIST Material Database](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Appendix/materialNames.html) (note: the GDML parser will complain that the materials have not been defined, but Geant4 will still run without error).
 Also supports Geant4's [text file geometry scheme](http://geant4.cern.ch/files/geant4/collaboration/working_groups/geometry/docs/textgeom/textgeom.pdf).
