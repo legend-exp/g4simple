@@ -44,6 +44,8 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     G4UIcmdWithAString* fOutputFormatCmd;
     G4UIcmdWithAString* fOutputOptionCmd;
     G4UIcmdWithABool* fRecordAllStepsCmd;
+    G4UIcmdWithAString* fSilenceOutputCmd;
+    G4UIcmdWithAString* fAddOutputCmd;
 
     enum EFormat { kCsv, kXml, kRoot, kHdf5 };
     EFormat fFormat;
@@ -76,8 +78,14 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
 
     map<G4VPhysicalVolume*, int> fVolIDMap;
 
+    // bools for setting which fields to write to output
+    G4bool fWEv, fWPid, fWTS, fWKE, fWEDep, fWR, fWLR, fWP, fWT, fWV;
+
   public:
-    G4SimpleSteppingAction() : fNEvents(0), fEventNumber(0) {
+    G4SimpleSteppingAction() : fNEvents(0), fEventNumber(0), 
+      fWEv(true), fWPid(true), fWTS(true), fWKE(true), fWEDep(true),
+      fWR(true), fWLR(true), fWP(true), fWT(true), fWV(true) 
+    {
       ResetVars(); 
 
       fVolIDCmd = new G4UIcommand("/g4simple/setVolID", this);
@@ -109,6 +117,15 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       fRecordAllStepsCmd->SetDefaultValue(true);
       fRecordAllStepsCmd->SetGuidance("Write out every single step, not just those in sensitive volumes.");
       fRecordAllSteps = false;
+
+      fSilenceOutputCmd = new G4UIcmdWithAString("/g4simple/silenceOutput", this);
+      fSilenceOutputCmd->SetGuidance("Silence output fields");
+      fAddOutputCmd = new G4UIcmdWithAString("/g4simple/addOutput", this);
+      fAddOutputCmd->SetGuidance("Add output fields");
+      candidates = "event pid track_step kinetic_energy energy_deposition ";
+      candidates += "position local_position momentum time volume all";
+      fSilenceOutputCmd->SetCandidates(candidates.c_str());
+      fAddOutputCmd->SetCandidates(candidates.c_str());
     }
 
     G4VAnalysisManager* GetAnalysisManager() {
@@ -179,6 +196,32 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       if(command == fRecordAllStepsCmd) {
         fRecordAllSteps = fRecordAllStepsCmd->GetNewBoolValue(newValues);
       }
+      if(command == fSilenceOutputCmd) {
+        G4bool all = (newValues == "all");
+        if(all || newValues == "event") fWEv = false;
+        if(all || newValues == "pid") fWPid = false;
+        if(all || newValues == "track_step") fWTS = false;
+        if(all || newValues == "kinetic_energy") fWKE = false;
+        if(all || newValues == "energy_deposition") fWEDep = false;
+        if(all || newValues == "position") fWR = false;
+        if(all || newValues == "local_position") fWLR = false;
+        if(all || newValues == "momentum") fWP = false;
+        if(all || newValues == "time") fWT = false;
+        if(all || newValues == "volume") fWV = false;
+      }
+      if(command == fAddOutputCmd) {
+        G4bool all = (newValues == "all");
+        if(all || newValues == "event") fWEv = true;
+        if(all || newValues == "pid") fWPid = true;
+        if(all || newValues == "track_step") fWTS = true;
+        if(all || newValues == "kinetic_energy") fWKE = true;
+        if(all || newValues == "energy_deposition") fWEDep = true;
+        if(all || newValues == "position") fWR = true;
+        if(all || newValues == "local_position") fWLR = true;
+        if(all || newValues == "momentum") fWP = true;
+        if(all || newValues == "time") fWT = true;
+        if(all || newValues == "volume") fWV = true;
+      }
     }
 
     void ResetVars() {
@@ -224,15 +267,13 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       return id;
     }
 
-    void PushData(G4int id, const G4Step* step, G4bool usePreStep, G4bool zeroEdep=false) {
-      fVolID.push_back(id);
+    void PushData(const G4Step* step, G4bool usePreStep, G4bool zeroEdep=false) {
+      G4StepPoint* stepPoint = usePreStep ? step->GetPreStepPoint() : stepPoint = step->GetPostStepPoint();
+      fVolID.push_back(GetVolID(stepPoint));
       fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
       fTrackID.push_back(step->GetTrack()->GetTrackID());
       fParentID.push_back(step->GetTrack()->GetParentID());
       fStepNumber.push_back(step->GetTrack()->GetCurrentStepNumber() - int(usePreStep));
-      G4StepPoint* stepPoint = NULL;
-      if(usePreStep) stepPoint = step->GetPreStepPoint();
-      else stepPoint = step->GetPostStepPoint();
       fKE.push_back(stepPoint->GetKineticEnergy());
       if(usePreStep || zeroEdep) fEDep.push_back(0);
       else fEDep.push_back(step->GetTotalEnergyDeposit());
@@ -257,29 +298,29 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
 
     void WriteRow() {
       G4VAnalysisManager* man = GetAnalysisManager();
-      man->FillNtupleIColumn(0, fNEvents);
-      man->FillNtupleIColumn(1, fEventNumber);
-      int row = 2;
+      int row = 0;
+      if(fWEv) man->FillNtupleIColumn(row++, fNEvents);
+      if(fWEv) man->FillNtupleIColumn(row++, fEventNumber);
       if(fOption == kStepWise) {
         size_t i = fPID.size()-1;
-        man->FillNtupleIColumn(row++, fPID[i]);
-        man->FillNtupleIColumn(row++, fTrackID[i]);
-        man->FillNtupleIColumn(row++, fParentID[i]);
-        man->FillNtupleIColumn(row++, fStepNumber[i]);
-        man->FillNtupleDColumn(row++, fKE[i]);
-        man->FillNtupleDColumn(row++, fEDep[i]);
-        man->FillNtupleDColumn(row++, fX[i]);
-        man->FillNtupleDColumn(row++, fY[i]);
-        man->FillNtupleDColumn(row++, fZ[i]);
-        man->FillNtupleDColumn(row++, fLX[i]);
-        man->FillNtupleDColumn(row++, fLY[i]);
-        man->FillNtupleDColumn(row++, fLZ[i]);
-        man->FillNtupleDColumn(row++, fPdX[i]);
-        man->FillNtupleDColumn(row++, fPdY[i]);
-        man->FillNtupleDColumn(row++, fPdZ[i]);
-        man->FillNtupleDColumn(row++, fT[i]);
-        man->FillNtupleIColumn(row++, fVolID[i]);
-        man->FillNtupleIColumn(row++, fIRep[i]);
+        if(fWPid) man->FillNtupleIColumn(row++, fPID[i]);
+        if(fWTS) man->FillNtupleIColumn(row++, fTrackID[i]);
+        if(fWTS) man->FillNtupleIColumn(row++, fParentID[i]);
+        if(fWTS) man->FillNtupleIColumn(row++, fStepNumber[i]);
+        if(fWKE) man->FillNtupleDColumn(row++, fKE[i]);
+        if(fWEDep) man->FillNtupleDColumn(row++, fEDep[i]);
+        if(fWR) man->FillNtupleDColumn(row++, fX[i]);
+        if(fWR) man->FillNtupleDColumn(row++, fY[i]);
+        if(fWR) man->FillNtupleDColumn(row++, fZ[i]);
+        if(fWLR) man->FillNtupleDColumn(row++, fLX[i]);
+        if(fWLR) man->FillNtupleDColumn(row++, fLY[i]);
+        if(fWLR) man->FillNtupleDColumn(row++, fLZ[i]);
+        if(fWP) man->FillNtupleDColumn(row++, fPdX[i]);
+        if(fWP) man->FillNtupleDColumn(row++, fPdY[i]);
+        if(fWP) man->FillNtupleDColumn(row++, fPdZ[i]);
+        if(fWT) man->FillNtupleDColumn(row++, fT[i]);
+        if(fWV) man->FillNtupleIColumn(row++, fVolID[i]);
+        if(fWV) man->FillNtupleIColumn(row++, fIRep[i]);
       }
       // for event-wise, manager copies data from vectors over
       // automatically in the next line
@@ -296,47 +337,47 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         // need to create the ntuple before opening the file in order to avoid
         // writing error in csv, xml, and hdf5
         man->CreateNtuple("g4sntuple", "steps data");
-        man->CreateNtupleIColumn("nEvents");
-        man->CreateNtupleIColumn("event");
+        if(fWEv) man->CreateNtupleIColumn("nEvents");
+        if(fWEv) man->CreateNtupleIColumn("event");
         if(fOption == kEventWise) {
-          man->CreateNtupleIColumn("pid", fPID);
-          man->CreateNtupleIColumn("trackID", fTrackID);
-          man->CreateNtupleIColumn("parentID", fParentID);
-          man->CreateNtupleIColumn("step", fStepNumber);
-          man->CreateNtupleDColumn("KE", fKE);
-          man->CreateNtupleDColumn("Edep", fEDep);
-          man->CreateNtupleDColumn("x", fX);
-          man->CreateNtupleDColumn("y", fY);
-          man->CreateNtupleDColumn("z", fZ);
-          man->CreateNtupleDColumn("lx", fLX);
-          man->CreateNtupleDColumn("ly", fLY);
-          man->CreateNtupleDColumn("lz", fLZ);
-          man->CreateNtupleDColumn("pdx", fPdX);
-          man->CreateNtupleDColumn("pdy", fPdY);
-          man->CreateNtupleDColumn("pdz", fPdZ);
-          man->CreateNtupleDColumn("t", fT);
-          man->CreateNtupleIColumn("volID", fVolID);
-          man->CreateNtupleIColumn("iRep", fIRep);
+          if(fWPid) man->CreateNtupleIColumn("pid", fPID);
+          if(fWTS) man->CreateNtupleIColumn("trackID", fTrackID);
+          if(fWTS) man->CreateNtupleIColumn("parentID", fParentID);
+          if(fWTS) man->CreateNtupleIColumn("step", fStepNumber);
+          if(fWKE) man->CreateNtupleDColumn("KE", fKE);
+          if(fWEDep) man->CreateNtupleDColumn("Edep", fEDep);
+          if(fWR) man->CreateNtupleDColumn("x", fX);
+          if(fWR) man->CreateNtupleDColumn("y", fY);
+          if(fWR) man->CreateNtupleDColumn("z", fZ);
+          if(fWLR) man->CreateNtupleDColumn("lx", fLX);
+          if(fWLR) man->CreateNtupleDColumn("ly", fLY);
+          if(fWLR) man->CreateNtupleDColumn("lz", fLZ);
+          if(fWP) man->CreateNtupleDColumn("pdx", fPdX);
+          if(fWP) man->CreateNtupleDColumn("pdy", fPdY);
+          if(fWP) man->CreateNtupleDColumn("pdz", fPdZ);
+          if(fWT) man->CreateNtupleDColumn("t", fT);
+          if(fWV) man->CreateNtupleIColumn("volID", fVolID);
+          if(fWV) man->CreateNtupleIColumn("iRep", fIRep);
         }
         else if(fOption == kStepWise) {
-          man->CreateNtupleIColumn("pid");
-          man->CreateNtupleIColumn("trackID");
-          man->CreateNtupleIColumn("parentID");
-          man->CreateNtupleIColumn("step");
-          man->CreateNtupleDColumn("KE");
-          man->CreateNtupleDColumn("Edep");
-          man->CreateNtupleDColumn("x");
-          man->CreateNtupleDColumn("y");
-          man->CreateNtupleDColumn("z");
-          man->CreateNtupleDColumn("lx");
-          man->CreateNtupleDColumn("ly");
-          man->CreateNtupleDColumn("lz");
-          man->CreateNtupleDColumn("pdx");
-          man->CreateNtupleDColumn("pdy");
-          man->CreateNtupleDColumn("pdz");
-          man->CreateNtupleDColumn("t");
-          man->CreateNtupleIColumn("volID");
-          man->CreateNtupleIColumn("iRep");
+          if(fWPid) man->CreateNtupleIColumn("pid");
+          if(fWTS) man->CreateNtupleIColumn("trackID");
+          if(fWTS) man->CreateNtupleIColumn("parentID");
+          if(fWTS) man->CreateNtupleIColumn("step");
+          if(fWKE) man->CreateNtupleDColumn("KE");
+          if(fWEDep) man->CreateNtupleDColumn("Edep");
+          if(fWR) man->CreateNtupleDColumn("x");
+          if(fWR) man->CreateNtupleDColumn("y");
+          if(fWR) man->CreateNtupleDColumn("z");
+          if(fWLR) man->CreateNtupleDColumn("lx");
+          if(fWLR) man->CreateNtupleDColumn("ly");
+          if(fWLR) man->CreateNtupleDColumn("lz");
+          if(fWP) man->CreateNtupleDColumn("pdx");
+          if(fWP) man->CreateNtupleDColumn("pdy");
+          if(fWP) man->CreateNtupleDColumn("pdz");
+          if(fWT) man->CreateNtupleDColumn("t");
+          if(fWV) man->CreateNtupleIColumn("volID");
+          if(fWV) man->CreateNtupleIColumn("iRep");
         }
         else {
           cout << "ERROR: Unknown output option " << fOption << endl;
@@ -363,45 +404,52 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         lastEventID = fEventNumber;
       }
 
-      // Check if we are in a sensitive volume.
-      // A track is "in" the volume of the pre-step point.
-      G4int id = GetVolID(step->GetPreStepPoint());
-
+      // Check if we are in a sensitive volume. At boundary crossings, 
+      // a track is "in" the volume of the pre-step point.
+      // If writing out all steps, just write and return.
       G4bool usePreStep = false;
+      G4bool zeroEdep = false;
       if(fRecordAllSteps) {
         if(step->GetTrack()->GetCurrentStepNumber() == 1) {
-          PushData(id, step, usePreStep=true);
+          PushData(step, usePreStep=true);
         }
-        PushData(id, step, usePreStep=false);
+        // g4simple output convention:
+        // Each two rows form a pre-post step point pair.
+        // All of the "step" info is recorded along with the post-step point
+        // 
+        PushData(step, usePreStep=false);
         return;
       }
 
+      // Below here: writing out only steps in sensitive volumes (volID != 0)
+      G4int preID = GetVolID(step->GetPreStepPoint());
+      G4int postID = GetVolID(step->GetPostStepPoint());
+
       // record primary event info from pre-step of first step of first track
       if(step->GetTrack()->GetTrackID() == 1 && step->GetTrack()->GetCurrentStepNumber() == 1) {
-        PushData(id, step, usePreStep=true);
+        PushData(step, usePreStep=true);
       }
 
       // Record step data if in a sensitive volume and Edep > 0
-      if(id != 0 && step->GetTotalEnergyDeposit() > 0) {
+      if(preID != 0 && step->GetTotalEnergyDeposit() > 0) {
         // Record pre-step data for the first step of a E-depositing track in a
         // sens vol. Note: if trackID == 1, we already recorded it
         if(step->GetTrack()->GetCurrentStepNumber() == 1 && step->GetTrack()->GetTrackID() > 1) {
-          PushData(id, step, usePreStep=true);
+          PushData(step, usePreStep=true);
         }
         // Record post-step data for all sens vol steps
-        PushData(id, step, usePreStep=false);
+        PushData(step, usePreStep=false);
+        return; // don't need to re-write poststep below if we already wrote it out
       }
 
       // Record the step point when an energy-depositing particle first enters a
       // sensitive volume: it's the post-step-point of the step where the phys
       // vol pointer changes.
-      // Have to do this last to make sure to write the last step of the
-      // previous volume in case it is also sensitive.
+      // Have to do this last because we might have already written it out
+      // during the last step of the previous volume if it was also sensitive.
       if(step->GetPreStepPoint()->GetPhysicalVolume() != step->GetPostStepPoint()->GetPhysicalVolume()) {
-        G4int post_id = GetVolID(step->GetPostStepPoint());
-        if(post_id != 0 && step->GetTotalEnergyDeposit() > 0) {
-          G4bool zeroEdep = true;
-          PushData(post_id, step, usePreStep=false, zeroEdep);
+        if(postID != 0 && step->GetTotalEnergyDeposit() > 0) {
+          PushData(step, usePreStep=false, zeroEdep=true);
         }
       }
     }
