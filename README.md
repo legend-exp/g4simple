@@ -62,7 +62,9 @@ Ouput parameters:
 * int volID: the ID of the volume being traversed (user-defined) (see example run.mac)
 * int iRep: the replica number of the volume being traversed
 
-Note: Each pair of rows in the output corresponds to the pre- and post-step point of the corresponding step, with the step number and Edep of the step recorded along with the post-step. Note that the Edep (in the post step) occurs in the volume of 
+You can turn on and off different output fields using the macro silenceOutput/addOutput macro commands (see example run.mac).
+
+Note: Each pair of rows in the output corresponds to the pre- and post-step point of the corresponding step, with the step number, Edep, and volume traversed for the step recorded along with the post-step. Note that this means that volume ID changes occur at the first step point *inside* a volume, not at the point recorded on the boundary. This may be counter-intuitive for those familiar with G4, where the step point on the boundary is marked as being "in" the volume being entered.
 
 For every energy-depositing particle traversing a sensitive volume, the g4simple output will include the step info for the first step point in the volume. If the previous volume was not a sensitive volume, that step will have Edep = 0.
 
