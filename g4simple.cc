@@ -267,9 +267,17 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       return id;
     }
 
-    void PushData(const G4Step* step, G4bool usePreStep, G4bool zeroEdep=false) {
-      G4StepPoint* stepPoint = usePreStep ? step->GetPreStepPoint() : stepPoint = step->GetPostStepPoint();
+    void PushData(const G4Step* step, G4bool usePreStep=false, G4bool zeroEdep=false) {
+      // g4simple output convention:
+      // Each two rows form a pre-post step point pair.
+      // In G4 one is always "in" the vol of the prestep point in G4
+      // However in g4simple the volID along with the Edep of the step get
+      // recorded along with the poststep point info.
+      // This means that boundary crossings are recorded in g4simple output at
+      // the first step AFTER hitting the boundary.
+      G4StepPoint* stepPoint = step->GetPreStepPoint();
       fVolID.push_back(GetVolID(stepPoint));
+      if(!usePreStep) stepPoint = stepPoint = step->GetPostStepPoint();
       fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
       fTrackID.push_back(step->GetTrack()->GetTrackID());
       fParentID.push_back(step->GetTrack()->GetParentID());
@@ -404,41 +412,35 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         lastEventID = fEventNumber;
       }
 
-      // Check if we are in a sensitive volume. At boundary crossings, 
-      // a track is "in" the volume of the pre-step point.
       // If writing out all steps, just write and return.
-      G4bool usePreStep = false;
-      G4bool zeroEdep = false;
+      G4bool usePreStep = true;
       if(fRecordAllSteps) {
         if(step->GetTrack()->GetCurrentStepNumber() == 1) {
-          PushData(step, usePreStep=true);
+          PushData(step, usePreStep);
         }
-        // g4simple output convention:
-        // Each two rows form a pre-post step point pair.
-        // All of the "step" info is recorded along with the post-step point
-        // 
-        PushData(step, usePreStep=false);
+        PushData(step);
         return;
+      }
+
+      // Not writing out all steps:
+      // First record primary event info from pre-step of first step of first track
+      if(step->GetTrack()->GetTrackID() == 1 && step->GetTrack()->GetCurrentStepNumber() == 1) {
+        PushData(step, usePreStep);
       }
 
       // Below here: writing out only steps in sensitive volumes (volID != 0)
       G4int preID = GetVolID(step->GetPreStepPoint());
       G4int postID = GetVolID(step->GetPostStepPoint());
 
-      // record primary event info from pre-step of first step of first track
-      if(step->GetTrack()->GetTrackID() == 1 && step->GetTrack()->GetCurrentStepNumber() == 1) {
-        PushData(step, usePreStep=true);
-      }
-
       // Record step data if in a sensitive volume and Edep > 0
       if(preID != 0 && step->GetTotalEnergyDeposit() > 0) {
         // Record pre-step data for the first step of a E-depositing track in a
         // sens vol. Note: if trackID == 1, we already recorded it
         if(step->GetTrack()->GetCurrentStepNumber() == 1 && step->GetTrack()->GetTrackID() > 1) {
-          PushData(step, usePreStep=true);
+          PushData(step, usePreStep);
         }
         // Record post-step data for all sens vol steps
-        PushData(step, usePreStep=false);
+        PushData(step);
         return; // don't need to re-write poststep below if we already wrote it out
       }
 
@@ -447,9 +449,10 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       // vol pointer changes.
       // Have to do this last because we might have already written it out
       // during the last step of the previous volume if it was also sensitive.
+      G4bool zeroEdep = true;
       if(step->GetPreStepPoint()->GetPhysicalVolume() != step->GetPostStepPoint()->GetPhysicalVolume()) {
         if(postID != 0 && step->GetTotalEnergyDeposit() > 0) {
-          PushData(step, usePreStep=false, zeroEdep=true);
+          PushData(step, usePreStep=false, zeroEdep);
         }
       }
     }
