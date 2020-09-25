@@ -22,6 +22,18 @@
 #/g4simple/setOutputOption stepwise
 #/g4simple/setOutputOption eventwise
 
+#/g4simple/silenceOutput all
+#/g4simple/addOutput event
+#/g4simple/addOutput pid
+#/g4simple/addOutput track_step
+#/g4simple/addOutput kinetic_energy
+#/g4simple/addOutput energy_deposition
+#/g4simple/addOutput position
+#/g4simple/addOutput local_position
+#/g4simple/addOutput momentum
+#/g4simple/addOutput time
+#/g4simple/addOutput volume
+
 # Change the name of the output file (by default it's g4simple.[ext])
 #/analysis/setFileName geCounterOut
 
@@ -56,5 +68,10 @@
 /gps/pos/radius 2 mm
 /gps/pos/centre 0 0 5 cm
 /gps/pos/confine source_PV
+
+#/gps/particle mu+
+#/gps/energy 1 GeV
+#/gps/position 0 0 5 cm
+#/gps/direction 0 0 -1
 
 /run/beamOn 100000
