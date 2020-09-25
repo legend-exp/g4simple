@@ -35,9 +35,9 @@ positions, energies, etc.
 
 Other macro commands: see the example run.mac, or run g4simple and type "help" and choose the g4simple option. Note: more commands become available after setting a physics list.
 
-Visualization: uses avaialable options in your G4 build (see example vis.mac).
+Visualization: uses available options in your G4 build (see example vis.mac).
 
-Postprocessing: you will want to postprocess the output to apply the detector
+Postprocessing: you will want to postprocess the output to apply e.g. detector
 response. See example code that runs on the output of run.mac.
 
 Ouput parameters:
@@ -62,6 +62,8 @@ Ouput parameters:
 * int volID: the ID of the volume being traversed (user-defined) (see example run.mac)
 * int iRep: the replica number of the volume being traversed
 
-Note: for every energy-depositing particle traversing a sensitive volume, g4simple will output the step info for the first step point in the volume, marked with Edep = 0.
+Note: Each pair of rows in the output corresponds to the pre- and post-step point of the corresponding step, with the step number and Edep of the step recorded along with the post-step. Note that the Edep (in the post step) occurs in the volume of 
+
+For every energy-depositing particle traversing a sensitive volume, the g4simple output will include the step info for the first step point in the volume. If the previous volume was not a sensitive volume, that step will have Edep = 0.
 
 See similar project by Jing Liu at https://github.com/jintonic/gears
