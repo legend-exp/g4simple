@@ -62,7 +62,7 @@ Ouput parameters:
 * int volID: the ID of the volume being traversed (user-defined) (see example run.mac)
 * int iRep: the replica number of the volume being traversed
 
-You can turn on and off different output fields using the macro silenceOutput/addOutput macro commands (see example run.mac).
+You can turn on and off different output fields using the macro silenceOutput/addOutput macro commands (see examples in run.mac).
 
 Note: Each pair of rows in the output corresponds to the pre- and post-step point of the corresponding step, with the step number, Edep, and volume traversed for the step recorded along with the post-step. Note that this means that volume ID changes occur at the first step point *inside* a volume, not at the point recorded on the boundary. This may be counter-intuitive for those familiar with G4, where the step point on the boundary is marked as being "in" the volume being entered.
 
