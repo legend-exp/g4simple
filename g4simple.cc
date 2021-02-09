@@ -306,29 +306,29 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
 
     void WriteRow() {
       G4VAnalysisManager* man = GetAnalysisManager();
-      int row = 0;
-      if(fWEv) man->FillNtupleIColumn(row++, fNEvents);
-      if(fWEv) man->FillNtupleIColumn(row++, fEventNumber);
+      int iCol = 0;
+      if(fWEv) man->FillNtupleIColumn(iCol++, fNEvents);
+      if(fWEv) man->FillNtupleIColumn(iCol++, fEventNumber);
       if(fOption == kStepWise) {
         size_t i = fPID.size()-1;
-        if(fWPid) man->FillNtupleIColumn(row++, fPID[i]);
-        if(fWTS) man->FillNtupleIColumn(row++, fTrackID[i]);
-        if(fWTS) man->FillNtupleIColumn(row++, fParentID[i]);
-        if(fWTS) man->FillNtupleIColumn(row++, fStepNumber[i]);
-        if(fWKE) man->FillNtupleDColumn(row++, fKE[i]);
-        if(fWEDep) man->FillNtupleDColumn(row++, fEDep[i]);
-        if(fWR) man->FillNtupleDColumn(row++, fX[i]);
-        if(fWR) man->FillNtupleDColumn(row++, fY[i]);
-        if(fWR) man->FillNtupleDColumn(row++, fZ[i]);
-        if(fWLR) man->FillNtupleDColumn(row++, fLX[i]);
-        if(fWLR) man->FillNtupleDColumn(row++, fLY[i]);
-        if(fWLR) man->FillNtupleDColumn(row++, fLZ[i]);
-        if(fWP) man->FillNtupleDColumn(row++, fPdX[i]);
-        if(fWP) man->FillNtupleDColumn(row++, fPdY[i]);
-        if(fWP) man->FillNtupleDColumn(row++, fPdZ[i]);
-        if(fWT) man->FillNtupleDColumn(row++, fT[i]);
-        if(fWV) man->FillNtupleIColumn(row++, fVolID[i]);
-        if(fWV) man->FillNtupleIColumn(row++, fIRep[i]);
+        if(fWPid) man->FillNtupleIColumn(iCol++, fPID[i]);
+        if(fWTS) man->FillNtupleIColumn(iCol++, fTrackID[i]);
+        if(fWTS) man->FillNtupleIColumn(iCol++, fParentID[i]);
+        if(fWTS) man->FillNtupleIColumn(iCol++, fStepNumber[i]);
+        if(fWKE) man->FillNtupleDColumn(iCol++, fKE[i]);
+        if(fWEDep) man->FillNtupleDColumn(iCol++, fEDep[i]);
+        if(fWR) man->FillNtupleDColumn(iCol++, fX[i]);
+        if(fWR) man->FillNtupleDColumn(iCol++, fY[i]);
+        if(fWR) man->FillNtupleDColumn(iCol++, fZ[i]);
+        if(fWLR) man->FillNtupleDColumn(iCol++, fLX[i]);
+        if(fWLR) man->FillNtupleDColumn(iCol++, fLY[i]);
+        if(fWLR) man->FillNtupleDColumn(iCol++, fLZ[i]);
+        if(fWP) man->FillNtupleDColumn(iCol++, fPdX[i]);
+        if(fWP) man->FillNtupleDColumn(iCol++, fPdY[i]);
+        if(fWP) man->FillNtupleDColumn(iCol++, fPdZ[i]);
+        if(fWT) man->FillNtupleDColumn(iCol++, fT[i]);
+        if(fWV) man->FillNtupleIColumn(iCol++, fVolID[i]);
+        if(fWV) man->FillNtupleIColumn(iCol++, fIRep[i]);
       }
       // for event-wise, manager copies data from vectors over
       // automatically in the next line
