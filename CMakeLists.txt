@@ -33,11 +33,15 @@ include(${Geant4_USE_FILE})
 # NB: headers are included so they will show up in IDEs
 # DJS: In this particular case we have no headers,
 # but I leave it here for generality
-file(GLOB sources ${PROJECT_SOURCE_DIR}/*.cc)
-
 #----------------------------------------------------------------------------
-# Add the executable, and link it to the Geant4 libraries
+# Locate sources and headers for this project
 #
+include_directories(${PROJECT_SOURCE_DIR}/include 
+                    ${Geant4_INCLUDE_DIR})
+file(GLOB sources ${PROJECT_SOURCE_DIR}/*.cc)
+file(GLOB headers ${PROJECT_SOURCE_DIR}/*.hh) 
+
+
 add_executable(g4simple g4simple.cc ${sources} ${headers})
 target_link_libraries(g4simple ${Geant4_LIBRARIES})
 
