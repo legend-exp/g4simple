@@ -3,7 +3,7 @@
 #/tracking/verbose 1
 
 /g4simple/setRandomSeed true
-#/random/setSeed 12345678
+#/random/setSeeds 816006053182404087 6398280497363454802
 
 # Need to set the physics list before we can do some of the other commands. 
 /g4simple/setReferencePhysList Shielding
@@ -36,6 +36,7 @@
 
 # Change the name of the output file (by default it's g4simple.[ext])
 #/analysis/setFileName geCounterOut
+#/analysis/compression 4 # doesn't work for HDF5 yet
 
 # Steps are only written out if they are in a volume that matches a pattern set
 # via the setVolID command
