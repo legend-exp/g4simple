@@ -561,17 +561,12 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
           return;
         }
 
-        long seed;
-        devrandom.read((char*)(&seed), sizeof(long));
+        long seed[2];
+        devrandom.read((char*)(seed), sizeof(long));
+        devrandom.read((char*)(seed+1), sizeof(long));
 
-        // Negative seeds give nasty sequences for some engines. For example,
-        // CLHEP's JamesRandom.cc contains a specific check for this. Might 
-        // as well make all seeds positive; randomness is not affected (one 
-        // bit of randomness goes unused).
-        if (seed < 0) seed = -seed;
-
-        CLHEP::HepRandom::setTheSeed(seed);
-        cout << "CLHEP::HepRandom seed set to: " << seed << endl;
+        CLHEP::HepRandom::setTheSeeds(seed, 2);
+        cout << "CLHEP::HepRandom seeds set to: " << seed[0] << ' ' << seed[1] << endl;
         devrandom.close();
       }
       else if(command == fListVolsCmd) {
