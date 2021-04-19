@@ -5,6 +5,11 @@ import pandas as pd
 '''
 g4sh5 is a python module of convenience functions for reading step-wise g4simple
 output stored in hdf5 files
+
+Easy way to import it from anywhere: set the PYTHONPATH envvar:
+
+export PYTHONPATH="$PYTHONPATH:/path/to/g4simple/"
+
 '''
 
 
