@@ -3,7 +3,7 @@ Perhaps the simplest fully-featured G4 application.
 
 Based on one-file simulation by Jason Detwiler.
 
-Installation:
+## Installation:
 Compile geant4 with GDML support (and optionally HDF5 support), then do:
 
 ```source (g4install_path)/share/(g4version)/geant4make/geant4make.sh```
@@ -12,35 +12,44 @@ Compile geant4 with GDML support (and optionally HDF5 support), then do:
 
 ```make```
 
-Physics List: uses Geant4's 
+May 2021: G4 deprecated geant4make-based installation for cmake. As a result, visualizations don't work with this method of installation. Worse yet, Geant4's installation instructions are incomplete and I have not yet been able to get cmake to work with HDF5 support. I'll update the instructions here once I figure it out. --Jason
+
+## Physics List: 
+uses Geant4's 
 [named physics lists](https://geant4.web.cern.ch/node/155), 
 set them using macro commands (see example run.mac)
 
-Generator: uses Geant4's 
+## Generator: 
+uses Geant4's 
 [GPS](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/GettingStarted/generalParticleSource.html). 
 Set it up using macro commands (see example run.mac).
 
-Geometry: uses 
+## Geometry: 
+uses 
 [GDML](http://gdml.web.cern.ch/GDML) 
 (see example run.mac). Can use materials from Geant4's
 [NIST Material Database](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Appendix/materialNames.html) (note: the GDML parser will complain that the materials have not been defined, but Geant4 will still run without error).
 Also supports Geant4's [text file geometry scheme](http://geant4.cern.ch/files/geant4/collaboration/working_groups/geometry/docs/textgeom/textgeom.pdf).
 
-Output: uses Geant4's analysis manager (root, hdf5, xml, csv), with several
+## Output: 
+uses Geant4's analysis manager (root, hdf5, xml, csv), with several
 configurable options for output format, sensitive volumes (including [regex-based pattern matching / replacement](http://www.cplusplus.com/reference/regex/ECMAScript)), etc. (see example
 run.mac). Records event/track/step numbers, 
 [PIDs](http://pdg.lbl.gov/2018/reviews/rpp2018-rev-monte-carlo-numbering.pdf) 
 (see also the python package [particle](https://pypi.org/project/Particle/)),
 positions, energies, etc.
 
-Other macro commands: see the example run.mac, or run g4simple and type "help" and choose the g4simple option. Note: more commands become available after setting a physics list.
+## Other macro commands
+see the example run.mac, or run g4simple and type "help" and choose the g4simple option. Note: more commands become available after setting a physics list.
 
-Visualization: uses available options in your G4 build (see example vis.mac).
+## Visualization
+uses available options in your G4 build (see example vis.mac).
 
-Postprocessing: you will want to postprocess the output to apply e.g. detector
+## Postprocessing
+you will want to postprocess the output to apply e.g. detector
 response. See example code that runs on the output of run.mac.
 
-Ouput parameters:
+## Ouput parameters:
 * int nEvents: number of events run in the simulation
 * int event: event number of the recorded step
 * int pid: particle ID of the particle making the step
@@ -68,4 +77,5 @@ Note: Each pair of rows in the output corresponds to the pre- and post-step poin
 
 For every energy-depositing particle traversing a sensitive volume, the g4simple output will include the step info for the first step point in the volume. If the previous volume was not a sensitive volume, that step will have Edep = 0.
 
-See similar project by Jing Liu at https://github.com/jintonic/gears
+## See Also
+Similar project by Jing Liu at https://github.com/jintonic/gears
