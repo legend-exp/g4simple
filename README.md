@@ -50,6 +50,13 @@ you will want to postprocess the output to apply e.g. detector
 response. See example code that runs on the output of run.mac.
 
 ## Ouput parameters:
+
+Output parameter values are in [Geant4 internal units](https://geant4.web.cern.ch/sites/geant4.web.cern.ch/files//geant4/collaboration/working_groups/electromagnetic/gallery/units/SystemOfUnits.html):
+* Length in mm
+* Time in ns
+* Energy in MeV
+
+The available output parameters are:
 * int nEvents: number of events run in the simulation
 * int event: event number of the recorded step
 * int pid: particle ID of the particle making the step
