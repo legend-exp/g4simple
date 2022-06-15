@@ -8,6 +8,8 @@ Compile geant4 with GDML support (and optionally HDF5 support), then do:
 
 ```make```
 
+A CMakeLists.txt is available for those who prefer cmake.
+
 ## Physics List: 
 uses Geant4's 
 [named physics lists](https://geant4.web.cern.ch/node/155), 
