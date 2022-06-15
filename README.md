@@ -6,13 +6,7 @@ Based on one-file simulation by Jason Detwiler.
 ## Installation:
 Compile geant4 with GDML support (and optionally HDF5 support), then do:
 
-```source (g4install_path)/share/(g4version)/geant4make/geant4make.sh```
-
-(or `source (g4install_path)/share/(g4version)/geant4make/geant4make.csh`)
-
 ```make```
-
-May 2021: G4 deprecated geant4make-based installation for cmake. As a result, visualizations don't work with this method of installation. Worse yet, Geant4's installation instructions are incomplete and I have not yet been able to get cmake to work with HDF5 support. I'll update the instructions here once I figure it out. --Jason
 
 ## Physics List: 
 uses Geant4's 
