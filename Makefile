@@ -3,7 +3,7 @@ LDLIBS = $(shell geant4-config --libs) -lxerces-c
 
 # Enable HDF5 if it is enabled in GEANT4
 ifeq ($(shell geant4-config --has-feature hdf5),yes)
-  CPPFLAGS += -DGEANT4_USE_HDF5
+  CXXFLAGS += -DGEANT4_USE_HDF5
 endif
 
 # set rpath on MacOS
