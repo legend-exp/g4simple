@@ -20,4 +20,4 @@ g4simple: g4simple.cc
 	@$(CXX) $(CXXFLAGS) -o g4simple g4simple.cc $(LDLIBS)
 
 clean:
-	@rm g4simple
+	@rm -f g4simple
