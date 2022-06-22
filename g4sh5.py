@@ -12,14 +12,31 @@ export PYTHONPATH="$PYTHONPATH:/path/to/g4simple/"
 
 '''
 
+def get_g4sntuple(file):
+    ''' get the g4sntuple out of a g4simple output file
+
+    Parameters
+    ----------
+    file : str or h5py.File
+        The g4simple output filename, or the actual h5py.File itself
+
+    Returns
+    -------
+    g4sntuple : h5py.Dataset
+        The h5py Dataset containing the g4simple output
+    '''
+    if isinstance(file, str): file = h5py.File(file, 'r')
+    if not isinstance(file, h5py.File)
+    return file['default_ntuples/g4sntuple']
 
 def get_n_rows(g4sntuple):
     ''' get the number of rows (steps) in a step-wise g4sntuple
 
     Parameters
     ----------
-    g4sntuple : h5py.Dataset
-        The g4simple ntuple. Should be written in step-wise mode.
+    g4sntuple : h5py.Dataset or h5py.File or str
+        The g4simple ntuple, or the name of a file containing one
+        Should be written in step-wise mode.
     
     Returns
     -------
@@ -36,7 +53,7 @@ def get_n_rows(g4sntuple):
     return g4sntuple['event/pages'].shape[0]
 
 
-def get_datasets(g4sntuple, fields):
+def get_datasets(g4sntuple, fields=None):
     ''' get a dictionary of hdf5 datasets for the specified fields
 
     Note: performs no data reads from the file. Actual reads are performed when
@@ -46,8 +63,9 @@ def get_datasets(g4sntuple, fields):
     ----------
     g4sntuple : h5py.Dataset
         The g4simple ntuple. Should be written in step-wise mode.
-    fields : list of str
+    fields : list of str or None
         A list of names of the fields to be accessed in the ntuple
+        None means pull out all fields
     
     Returns
     -------
@@ -62,12 +80,17 @@ def get_datasets(g4sntuple, fields):
     >>> datasets['step'][:10]
     array([0, 0, 0, 0, 1, 0, 5, 0, 1, 0], dtype=int32) # may vary
     '''
+
+    if isinstance(g4sntuple, str): # treat as filename
+        g4sntuple = h5py.File(g4sntuple, 'r')['default_ntuples/g4sntuple']
+
     datasets = {}
+    if fields is None: fields = list(g4sntuple.keys())
     for field in fields: datasets[field] = g4sntuple[field]['pages']
     return datasets
 
 
-def get_dataframe(datasets, selection=None):
+def get_dataframe(datasets, selection=None, fields=None):
     ''' get a pandas dataframe from selected data in the provided datasets
 
     Note 1: only reads selected data from disk. If selection = None, all data is
@@ -86,6 +109,10 @@ def get_dataframe(datasets, selection=None):
     selection : slice object (optional)
         A slice object specifing a read of just a subset of the data. Allows one
         to cycle through data in a file too large to fit in memory
+    fields : list of str or None
+        A list of names of the fields to be accessed in the ntuple
+        None means pull out all fields
+
     
     Returns
     -------
@@ -107,6 +134,8 @@ def get_dataframe(datasets, selection=None):
     3      3     0   11 -24.25767 -13.368400  31.085744
     4      3     1   11 -24.25767 -13.368400  31.085744   # may vary
     '''
+    if isinstance(datasets, str):
+        datasets = get_datasets(datasets, fields=fields)
     array_dict = {}
     for key, ds in datasets.items():
         if selection is None: array_dict[key] = np.array(ds)
