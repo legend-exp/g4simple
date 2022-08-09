@@ -4,7 +4,7 @@ Perhaps the simplest fully-featured G4 application.
 Based on one-file simulation by Jason Detwiler.
 
 ## Installation:
-Compile geant4 with GDML support (and optionally HDF5 support), then do:
+Compile geant4 with GDML support (and optionally HDF5 support), then in your terminal, enter:
 
 ```source (g4install_path)/share/(g4version)/geant4make/geant4make.sh```
 
