@@ -277,7 +277,7 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
       // the first step AFTER hitting the boundary.
       G4StepPoint* stepPoint = step->GetPreStepPoint();
       fVolID.push_back(GetVolID(stepPoint));
-      if(!usePreStep) stepPoint = stepPoint = step->GetPostStepPoint();
+      if(!usePreStep) stepPoint = step->GetPostStepPoint();
       fPID.push_back(step->GetTrack()->GetParticleDefinition()->GetPDGEncoding());
       fTrackID.push_back(step->GetTrack()->GetTrackID());
       fParentID.push_back(step->GetTrack()->GetParentID());
