@@ -153,7 +153,6 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
         man->Write();
         man->CloseFile();
       }
-      delete man;
       delete fVolIDCmd;
       delete fOutputFormatCmd;
       delete fOutputOptionCmd;
