@@ -29,7 +29,7 @@ uses
 [GDML](http://gdml.web.cern.ch/GDML) 
 (see example run.mac). Can use materials from Geant4's
 [NIST Material Database](http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/ForApplicationDeveloper/html/Appendix/materialNames.html) (note: the GDML parser will complain that the materials have not been defined, but Geant4 will still run without error).
-Also supports Geant4's [text file geometry scheme](http://geant4.cern.ch/files/geant4/collaboration/working_groups/geometry/docs/textgeom/textgeom.pdf).
+Also supports Geant4's [text file geometry scheme](https://web.archive.org/web/20220430174816/https://geant4.web.cern.ch/sites/default/files/geant4/collaboration/working_groups/geometry/docs/textgeom/textgeom.pdf).
 
 ## Output: 
 uses Geant4's analysis manager (root, hdf5, xml, csv), with several
