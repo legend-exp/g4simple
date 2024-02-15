@@ -16,7 +16,7 @@ May 2021: G4 deprecated geant4make-based installation for cmake. As a result, vi
 
 ## Physics List: 
 uses Geant4's 
-[named physics lists](https://geant4.web.cern.ch/node/155), 
+[named physics lists](https://geant4-userdoc.web.cern.ch/UsersGuides/PhysicsReferenceManual/html/index.html), 
 set them using macro commands (see example run.mac)
 
 ## Generator: 
