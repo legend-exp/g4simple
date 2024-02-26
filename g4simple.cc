@@ -25,6 +25,8 @@
 #include "G4PhysicalVolumeStore.hh"
 #include "G4tgbVolumeMgr.hh"
 #include "G4tgrMessenger.hh"
+#include "G4UserLimits.hh"
+#include "G4UnitsTable.hh"
 
 #include "g4root.hh"
 #include "g4xml.hh"
@@ -487,6 +489,7 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
     G4UIcommand* fTGDetectorCmd;
     G4UIcmdWithABool* fRandomSeedCmd;
     G4UIcmdWithAString* fListVolsCmd;
+    G4UIcommand* fSetStepLimitCmd;
 
   public:
     G4SimpleRunManager() {
@@ -518,6 +521,11 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
       fListVolsCmd->SetGuidance("List name of all instantiated physical volumes");
       fListVolsCmd->SetGuidance("Optionally supply a regex pattern to only list matching volume names");
       fListVolsCmd->AvailableForStates(G4State_Idle, G4State_GeomClosed, G4State_EventProc);
+      
+      fSetStepLimitCmd = new G4UIcommand("/g4simple/setStepLimit", this);
+      fSetStepLimitCmd->SetParameter(new G4UIparameter("stepLimitWithUnit", 's', false));
+      fSetStepLimitCmd->SetParameter(new G4UIparameter("volNameRegex", 's', true));
+      fSetStepLimitCmd->SetGuidance("Set maximum allowed step length with unit for volumes matching the provided regex (or all volumes if none is provided). Example: 1.0*um");
     }
 
     ~G4SimpleRunManager() {
@@ -579,6 +587,45 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
           string name = volumeStore->at(i)->GetName();
 	  int iRep = volumeStore->at(i)->GetCopyNo();
           if(!doMatching || regex_match(name, pattern)) cout << name << ' ' << iRep << endl;
+        }
+      }
+
+      else if (command == fSetStepLimitCmd) {
+        istringstream iss(newValues);
+        G4String valueWithUnit, volNameRegex;
+        // Read the value and unit as separate strings, then combine them
+        G4double value;
+        G4String unit;
+        iss >> value >> unit;
+        valueWithUnit = G4String(std::to_string(value)) + unit;
+        // Check if there's argument for the volume name regex
+        std::getline(iss >> std::ws, volNameRegex);
+        // Apply the step limit using the parsed values
+        ApplyStepLimit(valueWithUnit, volNameRegex);
+      }
+    }
+
+    void ApplyStepLimit(const G4String& lengthAndUnit, const G4String& volNameRegex) {
+      // Split the string into value and unit
+      istringstream iss(lengthAndUnit);
+      G4double value;
+      G4String unit;
+      iss >> value >> unit;
+      // Convert the unit to a multiplier
+      G4double unitMultiplier = G4UnitDefinition::GetValueOf(unit);
+      // Convert the input value to mm using the unit multiplier
+      G4double g4_step_max = value * unitMultiplier;
+      // Apply the step limit to volumes
+      G4PhysicalVolumeStore* volumeStore = G4PhysicalVolumeStore::GetInstance();
+      std::regex pattern(volNameRegex);
+      for (auto* vol : *volumeStore) {
+        if (std::regex_match(vol->GetName(), pattern)) {
+            G4LogicalVolume* logicalVolume = vol->GetLogicalVolume();
+            if (!logicalVolume->GetUserLimits()) {
+                logicalVolume->SetUserLimits(new G4UserLimits());
+            }
+            logicalVolume->GetUserLimits()->SetMaxAllowedStep(g4_step_max);
+            G4cout << "Set step limit of " << lengthAndUnit << " for volume " << vol->GetName() << G4endl;
         }
       }
     }
