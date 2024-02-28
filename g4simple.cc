@@ -525,7 +525,7 @@ class G4SimpleRunManager : public G4RunManager, public G4UImessenger
       fSetStepLimitCmd = new G4UIcommand("/g4simple/setStepLimit", this);
       fSetStepLimitCmd->SetParameter(new G4UIparameter("stepLimitWithUnit", 's', false));
       fSetStepLimitCmd->SetParameter(new G4UIparameter("volNameRegex", 's', true));
-      fSetStepLimitCmd->SetGuidance("Set maximum allowed step length with unit for volumes matching the provided regex (or all volumes if none is provided). Example: 1.0*um");
+      fSetStepLimitCmd->SetGuidance("Set maximum allowed step length with unit for volumes matching the provided regex (or all volumes if none is provided). Example: 1.0 um");
     }
 
     ~G4SimpleRunManager() {
