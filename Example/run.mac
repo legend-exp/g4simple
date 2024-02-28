@@ -50,6 +50,9 @@
 # volume IDs:
 #/g4simple/recordAllSteps
 
+# Example to set a step limit for specific volumes. This will apply a step limit of 1 um to Detector volume
+#/g4simple/setStepLimit 1.0 um geDetector_PV
+
 /run/initialize
 
 # If you want to see the list of available NIST materials (e.g. to help you
