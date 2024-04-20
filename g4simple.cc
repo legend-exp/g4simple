@@ -28,11 +28,11 @@
 #include "G4UserLimits.hh"
 #include "G4UnitsTable.hh"
 
-#include "g4root.hh"
-#include "g4xml.hh"
-#include "g4csv.hh"
+#include "G4AnalysisManager.hh"
+#include "G4XmlAnalysisManager.hh"
+#include "G4CsvAnalysisManager.hh"
 #ifdef GEANT4_USE_HDF5
-#include "g4hdf5.hh"
+#include "G4Hdf5AnalysisManager.hh"
 #endif
 
 using namespace std;
@@ -131,17 +131,17 @@ class G4SimpleSteppingAction : public G4UserSteppingAction, public G4UImessenger
     }
 
     G4VAnalysisManager* GetAnalysisManager() {
-      if(fFormat == kCsv) return G4Csv::G4AnalysisManager::Instance();
-      if(fFormat == kXml) return G4Xml::G4AnalysisManager::Instance();
-      if(fFormat == kRoot) return G4Root::G4AnalysisManager::Instance();
+      if(fFormat == kCsv) return G4CsvAnalysisManager::Instance();
+      if(fFormat == kXml) return G4XmlAnalysisManager::Instance();
+      if(fFormat == kRoot) return G4AnalysisManager::Instance();
       if(fFormat == kHdf5) {
 #ifdef GEANT4_USE_HDF5
-        return G4Hdf5::G4AnalysisManager::Instance();
+        return G4Hdf5AnalysisManager::Instance();
 #else
         cout << "Warning: You need to compile Geant4 with cmake flag "
              << "-DGEANT4_USE_HDF5 in order to generate the HDF5 output format.  "
              << "Reverting to ROOT." << endl;
-        return G4Root::G4AnalysisManager::Instance();
+        return G4AnalysisManager::Instance();
 #endif
       }
       cout << "Error: invalid format " << fFormat << endl;
